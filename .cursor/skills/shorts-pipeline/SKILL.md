@@ -9,22 +9,26 @@ description: Makes one Korean finance YouTube Short from RSS via local CLI plus 
 
 산출은 `out/<channel>/<job>/`. 채널 두 개: **돈이웃** (한국 재테크, 현재 RSS 파이프라인), **offscn** (다른 채널. 폴더만. 콘텐츠 파이프라인은 아직 없음). 기본 채널은 돈이웃.
 
-없음: 헤드리스 launchd LLM. 스케줄은 Cursor Automation cron이 이 스킬을 돌리는 방식. 지금은 에이전트가 아래 순서를 직접 실행.
+없음: 헤드리스 launchd LLM. 스케줄은 Cursor Automation cron이 이 스킬을 돌리는 방식. 자동화 프롬프트는 `.cursor/automations/돈이웃-시간별-쇼츠.md`.
+
+중복은 Supabase `youtube.uploads`가 채널별로 막는다. pick이 테이블을 보고 선점하고, 렌더/업로드 후에 상태를 넣는다. 로컬 `data/shorts.db`만 보지 마라.
 
 ## 실행 순서
 
 저장소 루트에서.
 
-1. `python -m shorts pick --channel 돈이웃` → `out/<channel>/<job>/headline.json` 경로가 stdout. (`--channel offscn` 가능. 생략 시 돈이웃). pick은 시니어 관심(연금·노후·건보·상속·예적금·부동산) 헤드라인을 금융 일반·최신 기사보다 우선한다.
+1. `python -m shorts pick --channel 돈이웃` → `out/<channel>/<job>/headline.json` 경로가 stdout. (`--channel offscn` 가능. 생략 시 돈이웃). pick은 `youtube.uploads`에서 해당 채널의 picked/rendered/uploaded 해시를 빼고, 고른 뒤 `picked`로 선점한다. 시니어 관심(연금·노후·건보·상속·예적금·부동산) 헤드라인을 금융 일반·최신 기사보다 우선한다. “쓸 헤드라인 없음”이면 중단.
 2. `headline.json`만 보고 **원본** `script.json`을 같은 폴더에 직접 작성. OpenAI/Gemini/기타 LLM HTTP 호출 금지.
 3. 장면마다 Cursor **GenerateImage** (`aspect_ratio: 9:16`). 결과를 `out/<channel>/<job>/scene-01.png` … 로 복사. imagegen CLI / OPENAI_API_KEY 폴백 금지.
 4. `python -m shorts run --dry-run --dir out/<channel>/<job>`
    - ffmpeg 1080x1920 Ken Burns + 자막 + `assets/bgm` 루프/페이드
    - 길이는 `scenes[].duration` 합 (50~60초)
    - YouTube 생략. `video.mp4` + `script.json` 유지
-5. 공개 업로드는 사용자가 `올려줘`/`업로드` 할 때만. **REQUIRED:** `.cursor/skills/shorts-upload/SKILL.md`. Studio Playwright가 기본. CLI는 `token.json` 있을 때만 `AUTO_PUBLISH=1 python -m shorts upload --dir out/<channel>/<job>`.
+   - 성공 시 `youtube.uploads.status=rendered`
+5. 공개 업로드는 사용자가 `올려줘`/`업로드` 할 때, 또는 시간별 자동화가 게시할 때. **REQUIRED:** `.cursor/skills/shorts-upload/SKILL.md`. Studio Playwright가 기본. CLI는 `token.json` 있을 때만 `AUTO_PUBLISH=1 python -m shorts upload --dir out/<channel>/<job>`.
+6. Studio로 올렸으면 `python -m shorts record --dir out/<channel>/<job> --status uploaded --video-id <id>`.
 
-실패 시 로그만 남기고 중단. 같은 헤드라인은 렌더 성공 전에 다시 pick 가능.
+실패 시 로그만 남기고 중단. picked/rendered/uploaded 해시는 같은 채널에서 다시 pick하지 않는다.
 
 ## script.json
 

@@ -31,6 +31,8 @@ python -m shorts run --dry-run --dir out/<channel>/<job>
 
 `pick`은 RSS 미사용 헤드라인 중 **시니어 관심**(연금·노후·건보·상속·예적금·부동산 등)을 먼저 고른다. 그런 기사가 없으면 기존처럼 금융 키워드 → 오전 한경/매경, 오후 로이터/CNBC → 최신순.
 
+같은 채널에 같은 헤드라인을 두 번 올리지 않는다. `pick`이 Supabase `youtube.uploads`를 보고 선점하고, 렌더/업로드 후 상태를 넣는다. Studio로 올렸으면 `python -m shorts record --dir <잡> --status uploaded --video-id <id>`.
+
 `AUTO_PUBLISH=0` 또는 `--dry-run` → YouTube 생략. `out/<channel>/<job>/`에 mp4 + script JSON.
 
 ```bash
@@ -50,4 +52,4 @@ python -m shorts auth
 
 ## 스케줄
 
-launchd + API 키 헤드리스 LLM은 쓰지 않음. 하루 2회가 필요하면 Cursor Automation cron(08:00 / 21:00)이 이 스킬을 실행하게 만들 것. 그 전엔 에이전트가 위 CLI만 호출.
+launchd + API 키 헤드리스 LLM은 쓰지 않음. 스케줄은 Cursor Automation cron이 `.cursor/skills/shorts-pipeline/SKILL.md`와 `.cursor/automations/돈이웃-시간별-쇼츠.md`를 실행한다.

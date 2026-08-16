@@ -31,6 +31,49 @@ def channel_dir(channel: str) -> Path:
     return OUT_DIR / channel
 
 
+def channel_from_job(job: Path) -> str:
+    name = Path(job).resolve().parent.name
+    if name in CHANNELS:
+        return name
+    return DEFAULT_CHANNEL
+
+
+def youtube_channel_id(cfg: dict, channel: str) -> str:
+    info = (cfg.get("channels") or {}).get(channel) or {}
+    return str(info.get("youtube_channel_id") or "").strip()
+
+
+def supabase_url(cfg: dict | None = None) -> str:
+    env = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+    if env:
+        return env
+    data = cfg if cfg is not None else {}
+    return str((data.get("supabase") or {}).get("url") or "").strip().rstrip("/")
+
+
+def supabase_key(cfg: dict | None = None) -> str:
+    for name in (
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "SUPABASE_KEY",
+    ):
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    data = cfg if cfg is not None else {}
+    sb = data.get("supabase") or {}
+    for name in ("service_role_key", "anon_key", "publishable_key"):
+        value = str(sb.get(name) or "").strip()
+        if value:
+            return value
+    return ""
+
+
+def supabase_skip() -> bool:
+    return os.environ.get("SHORTS_SKIP_SUPABASE", "").strip() in {"1", "true", "TRUE", "yes"}
+
+
 def load_dotenv(path: Path = ENV_PATH) -> None:
     if not path.is_file():
         return

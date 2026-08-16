@@ -29,3 +29,7 @@ channels:
   돈이웃:
     youtube_channel_id: UCHUxp49IFZlHHCcg_LnL66A
     studio_shorts: https://studio.youtube.com/channel/UCHUxp49IFZlHHCcg_LnL66A/videos/short
+
+supabase:
+  url: https://supabase.idghst.co.kr
+  publishable_key: sb_publishable_9gXvklae_7JVNmqxUzEwlk_SO1IU9nO

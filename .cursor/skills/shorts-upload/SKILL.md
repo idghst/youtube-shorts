@@ -39,7 +39,8 @@ Auto-review가 도구를 막으면:
 
 ## 잡
 
-- 열린 파일 / 방금 만든 잡 / `out/<channel>/*/video.mp4` 중 아직 `uploaded` 아닌 것.
+- 열린 파일 / 방금 만든 잡 / `out/<channel>/*/video.mp4` 중 아직 `youtube.uploads`에 `uploaded`가 아닌 것.
+- 같은 채널·같은 `headline_hash`가 이미 `uploaded`면 올리지 마라.
 - `video.mp4` 없으면 업로드 금지. 렌더가 남았다고만 말해라.
 - `client_secrets.json` 없어도 Studio Playwright로 올린다. CLI OAuth는 폴백.
 
@@ -54,7 +55,7 @@ Playwright MCP. 로그인된 Studio 세션 유지.
 5. `다음` → 동영상 요소 → 검토 → 공개 상태.
 6. `PUBLIC` 클릭. 버튼이 `게시`가 되면 클릭.
 7. 목록 맨 위에 제목과 `/video/<id>/edit` 확인. `https://youtube.com/shorts/<id>` 보고.
-8. `mark_used(..., status="uploaded", video_id=...)`.
+8. `python -m shorts record --dir <잡폴더> --status uploaded --video-id <id>`. Supabase `youtube.uploads`에 채널·해시·video id를 남긴다. 이 기록 없이 끝내지 마라.
 
 ## 메타
 
