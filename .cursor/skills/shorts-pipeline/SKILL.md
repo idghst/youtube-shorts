@@ -15,7 +15,7 @@ description: Makes one Korean finance YouTube Short from RSS via local CLI plus 
 
 저장소 루트에서.
 
-1. `python -m shorts pick --channel 돈이웃` → `out/<channel>/<job>/headline.json` 경로가 stdout. (`--channel offscn` 가능. 생략 시 돈이웃)
+1. `python -m shorts pick --channel 돈이웃` → `out/<channel>/<job>/headline.json` 경로가 stdout. (`--channel offscn` 가능. 생략 시 돈이웃). pick은 시니어 관심(연금·노후·건보·상속·예적금·부동산) 헤드라인을 금융 일반·최신 기사보다 우선한다.
 2. `headline.json`만 보고 **원본** `script.json`을 같은 폴더에 직접 작성. OpenAI/Gemini/기타 LLM HTTP 호출 금지.
 3. 장면마다 Cursor **GenerateImage** (`aspect_ratio: 9:16`). 결과를 `out/<channel>/<job>/scene-01.png` … 로 복사. imagegen CLI / OPENAI_API_KEY 폴백 금지.
 4. `python -m shorts run --dry-run --dir out/<channel>/<job>`

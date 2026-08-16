@@ -29,6 +29,8 @@ python -m shorts run --dry-run --dir out/<channel>/<job>
 
 채널: `돈이웃` (한국 재테크, 기본), `offscn` (다른 채널. 폴더만). `--channel` 생략 시 돈이웃.
 
+`pick`은 RSS 미사용 헤드라인 중 **시니어 관심**(연금·노후·건보·상속·예적금·부동산 등)을 먼저 고른다. 그런 기사가 없으면 기존처럼 금융 키워드 → 오전 한경/매경, 오후 로이터/CNBC → 최신순.
+
 `AUTO_PUBLISH=0` 또는 `--dry-run` → YouTube 생략. `out/<channel>/<job>/`에 mp4 + script JSON.
 
 ```bash

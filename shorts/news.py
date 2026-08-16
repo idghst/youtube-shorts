@@ -150,25 +150,83 @@ _HINTS = (
     "반도체", "금리인하", "금리인상", "고용", "gdp",
 )
 
+# 돈이웃 시청층(시니어) 핵심. 점수가 금융 키워드·최신·매체보다 앞선다.
+_SENIOR_CORE = (
+    "연금", "은퇴", "노후", "고령", "시니어", "정년", "노령",
+    "국민연금", "기초연금", "퇴직연금", "개인연금", "주택연금",
+    "건강보험", "건보료", "의료비", "간병", "요양",
+    "상속", "증여", "역모기지",
+    "pension", "retirement", "annuity", "medicare", "medicaid",
+    "social security", "nursing",
+)
+
+# 시니어가 자주 보는 재테크. 코어보다 낮게 가산.
+_SENIOR_NEAR = (
+    "예금", "적금", "예적금", "배당", "부동산", "전세", "종부세", "재산세",
+    "irp", "공시가격", "공시지가",
+    "dividend", "deposit",
+)
+
+
+def _blob(headline: Headline) -> str:
+    return ("%s %s" % (headline.title, headline.summary)).lower()
+
+
+def _count_hints(blob: str, keys: tuple) -> int:
+    return sum(1 for key in keys if key in blob)
+
 
 def _finance_score(headline: Headline) -> int:
-    blob = ("%s %s" % (headline.title, headline.summary)).lower()
-    return sum(1 for key in _HINTS if key in blob)
+    return _count_hints(_blob(headline), _HINTS)
 
 
-def pick_headline(cfg: dict) -> Headline:
+def _senior_score(headline: Headline) -> int:
+    blob = _blob(headline)
+    return _count_hints(blob, _SENIOR_CORE) * 3 + _count_hints(blob, _SENIOR_NEAR)
+
+
+def _preferred_sources(now: datetime | None = None) -> tuple:
+    hour = (now or datetime.now()).hour
+    return ("hankyung", "mk") if hour < 12 else ("reuters", "cnbc")
+
+
+def _source_boost(headline: Headline, prefer: tuple) -> int:
+    return 1 if any(headline.source.startswith(p) for p in prefer) else 0
+
+
+def choose_headline(unused: list, now: datetime | None = None) -> Headline:
+    """미사용 헤드라인 중 시니어 관심 → 금융 키워드 → 시간대 매체 → 최신 순."""
+    if not unused:
+        raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
+    prefer = _preferred_sources(now)
+    senior_hits = [h for h in unused if _senior_score(h) > 0]
+    finance_hits = [h for h in unused if _finance_score(h) > 0]
+    pool = senior_hits or finance_hits or unused
+
+    def sort_key(item: Headline):
+        return (
+            _senior_score(item),
+            _finance_score(item),
+            _source_boost(item, prefer),
+            _parse_date(item.published),
+        )
+
+    chosen = max(pool, key=sort_key)
+    log.info(
+        "선정 점수 senior=%d finance=%d [%s] %s",
+        _senior_score(chosen),
+        _finance_score(chosen),
+        chosen.source,
+        chosen.title,
+    )
+    return chosen
+
+
+def pick_headline(cfg: dict, now: datetime | None = None) -> Headline:
     feeds = cfg.get("rss") or []
     claimed = claimed_hashes()
     unused = [h for h in collect(feeds) if h.hash not in claimed]
-    if not unused:
-        raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
-    hour = datetime.now().hour
-    prefer = ("hankyung", "mk") if hour < 12 else ("reuters", "cnbc")
-    ranked = [h for h in unused if _finance_score(h) > 0] or unused
-    for item in ranked:
-        if any(item.source.startswith(p) for p in prefer):
-            return item
-    return ranked[0]
+    return choose_headline(unused, now=now)
 
 
 def write_job(headline: Headline, channel: str = DEFAULT_CHANNEL) -> Path:
