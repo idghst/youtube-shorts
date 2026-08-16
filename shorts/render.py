@@ -13,6 +13,11 @@ from shorts.models import Script, Scene, scene_image_path
 log = logging.getLogger("shorts")
 FONT = "/System/Library/Fonts/AppleSDGothicNeo.ttc"
 FONT_FALLBACK = "/System/Library/Fonts/Supplemental/AppleGothic.ttf"
+LINUX_FONTS = (
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+)
 KEYWORD_RE = re.compile(
     r"(\d+(?:\.\d+)?(?:조|억|만|%|퍼센트|년)?|영끌|빚투|주택담보대출|주담대|금리|연체율|가계빚|가계부채|총량)"
 )
@@ -93,7 +98,7 @@ def _caption_font(size: int):
         from PIL import ImageFont
     except ImportError as exc:
         raise SystemExit("자막용 Pillow 필요. pip install -r requirements.txt") from exc
-    for candidate in (FONT, FONT_FALLBACK):
+    for candidate in (FONT, FONT_FALLBACK, *LINUX_FONTS):
         if not Path(candidate).is_file():
             continue
         for index in (1, 2, 0):
