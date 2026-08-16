@@ -38,6 +38,15 @@ def main(argv: list | None = None) -> int:
     )
     run_p.add_argument("--dry-run", action="store_true", help="업로드 생략, 로컬 mp4+JSON만")
 
+    record_p = sub.add_parser("record", help="youtube.uploads 상태 기록 (Studio 업로드 후)")
+    record_p.add_argument("--dir", required=True, help="잡 폴더 out/<channel>/<job>")
+    record_p.add_argument(
+        "--status",
+        default="uploaded",
+        choices=["picked", "rendered", "uploaded", "failed", "deleted"],
+    )
+    record_p.add_argument("--video-id", default="", help="YouTube video id")
+
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -65,6 +74,10 @@ def main(argv: list | None = None) -> int:
             from shorts.run import cmd_run
 
             cmd_run(args.dir, dry_run=args.dry_run, channel=args.channel)
+        elif args.cmd == "record":
+            from shorts.run import cmd_record
+
+            cmd_record(args.dir, args.status, video_id=args.video_id)
         else:
             parser.print_help()
             return 2

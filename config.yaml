@@ -5,6 +5,10 @@ rss:
     url: https://www.hankyung.com/feed/economy
   - name: mk_economy
     url: https://www.mk.co.kr/rss/30100041/
+  - name: hankyung_realestate
+    url: https://www.hankyung.com/feed/realestate
+  - name: mk_realestate
+    url: https://www.mk.co.kr/rss/50300009/
   - name: reuters_business
     url: https://feeds.reuters.com/reuters/businessNews
   - name: cnbc_business
@@ -25,3 +29,7 @@ channels:
   돈이웃:
     youtube_channel_id: UCHUxp49IFZlHHCcg_LnL66A
     studio_shorts: https://studio.youtube.com/channel/UCHUxp49IFZlHHCcg_LnL66A/videos/short
+
+supabase:
+  url: https://supabase.idghst.co.kr
+  publishable_key: sb_publishable_9gXvklae_7JVNmqxUzEwlk_SO1IU9nO
