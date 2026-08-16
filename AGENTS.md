@@ -6,3 +6,33 @@
 - `.env`, credentials, token, 비밀값, 이번 작업과 무관한 dirty 파일은 제외하고 남은 파일은 보고한다.
 - force push, 자동 pull/rebase/merge, `--no-verify`는 명시 요청 없이 하지 않는다.
 - 커밋할 변경이 없으면 커밋하지 않는다.
+
+## Cursor Cloud
+
+이 저장소는 로컬 YouTube Shorts 파이프라인(`shorts` + `ffmpeg`)이다. macOS용으로 쓰였고 Linux Cloud VM에서도 돈다. 제품/워크플로는 `README.md`, `.cursor/skills/shorts-pipeline/SKILL.md`.
+
+### 실행
+
+- 프로젝트 venv: `.venv/bin/python -m shorts <cmd>`. 시스템 Python에 설치하지 않는다.
+- 렌더는 `ffmpeg`/`ffprobe` 필요. VM은 `/usr/bin/ffmpeg`.
+- 점검: `.venv/bin/python -m py_compile shorts/*.py`, `python -m unittest`, 파이프라인 한 번.
+
+### 한글 폰트
+
+- macOS: `/System/Library/Fonts/AppleSDGothicNeo.ttc`, `.../Supplemental/AppleGothic.ttf`
+- Linux: `shorts/render.py`의 `LINUX_FONTS` (Noto CJK/KR, Nanum, WenQuanYi)
+- 둘 다 없으면 `한글 폰트 없음`으로 중단.
+
+### 파이프라인
+
+1. `.venv/bin/python -m shorts pick --channel 돈이웃` → `out/<channel>/<job>/headline.json`
+2. 에이전트가 `script.json`을 직접 쓰고 `GenerateImage`로 `scene-01.png` … 작성. OpenAI/Gemini/FAL, imagegen CLI 금지.
+3. `.venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>` → `video.mp4`. scenes 4~5개, duration 합 50~60초.
+
+### 업로드
+
+- 공개 업로드는 사용자 요청 또는 시간별 자동화일 때만. `client_secrets.json` 없으면 CLI 업로드 불가.
+
+### 무시 경로
+
+- `out/`, `data/*.db`, `.venv/`, `.env`, `token.json`, `client_secrets.json`은 커밋하지 않는다.
