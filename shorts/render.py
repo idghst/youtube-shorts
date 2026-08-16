@@ -14,6 +14,8 @@ log = logging.getLogger("shorts")
 FONT = "/System/Library/Fonts/AppleSDGothicNeo.ttc"
 FONT_FALLBACK = "/System/Library/Fonts/Supplemental/AppleGothic.ttf"
 LINUX_FONTS = (
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
     "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
     "/usr/share/fonts/truetype/noto/NotoSansKR-Regular.otf",
