@@ -14,7 +14,7 @@ width: 1080
 height: 1920
 max_seconds: 60
 fps: 30
-bgm: assets/bgm/silent-descent.mp3
+bgm: assets/bgm/running-out-of-time.mp3
 bgm_volume: 0.32
 
 disclaimer: 본 영상은 정보 제공 목적이며 특정 종목의 매수·매도를 권유하지 않습니다. 투자 손실에 대한 책임은 투자자 본인에게 있습니다.
