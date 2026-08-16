@@ -13,8 +13,15 @@ from shorts.models import Script, Scene, scene_image_path
 log = logging.getLogger("shorts")
 FONT = "/System/Library/Fonts/AppleSDGothicNeo.ttc"
 FONT_FALLBACK = "/System/Library/Fonts/Supplemental/AppleGothic.ttf"
+LINUX_FONTS = (
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+    "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
+    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc",
+)
 KEYWORD_RE = re.compile(
-    r"(\d+(?:\.\d+)?(?:조|억|만|%|퍼센트|년)?|영끌|빚투|주택담보대출|주담대|금리|연체율|가계빚|가계부채|총량)"
+    r"(\d+(?:\.\d+)?(?:조|억|만|%|퍼센트|년)?|영끌|빚투|주택담보대출|주담대|금리|연체율|가계빚|가계부채|총량|실손|본전|할증|병원비|보험료)"
 )
 GOLD = (255, 213, 74, 255)
 WHITE = (255, 255, 255, 255)
@@ -93,7 +100,7 @@ def _caption_font(size: int):
         from PIL import ImageFont
     except ImportError as exc:
         raise SystemExit("자막용 Pillow 필요. pip install -r requirements.txt") from exc
-    for candidate in (FONT, FONT_FALLBACK):
+    for candidate in (FONT, FONT_FALLBACK, *LINUX_FONTS):
         if not Path(candidate).is_file():
             continue
         for index in (1, 2, 0):
@@ -127,33 +134,45 @@ def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
 
     lines = textwrap.wrap(text.replace("\n", " "), width=12) or [text]
     lines = lines[:2]
-    font = _caption_font(76)
+    font = _caption_font(80)
     probe = Image.new("RGBA", (width, 10), (0, 0, 0, 0))
     draw = ImageDraw.Draw(probe)
-    sizes = [_line_width(draw, line, font) for line in lines]
-    gap = 10
-    text_w = max(w for w, _h in sizes)
-    text_h = sum(h for _w, h in sizes) + gap * (len(lines) - 1)
-    pad_x, pad_y = 36, 22
-    box_w = min(width - 96, text_w + pad_x * 2)
-    box_h = text_h + pad_y * 2
-    img_h = box_h + 16
-    img = Image.new("RGBA", (width, img_h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    x0 = (width - box_w) // 2
-    y0 = 8
-    draw.rounded_rectangle((x0, y0, x0 + box_w, y0 + box_h), radius=20, fill=(0, 0, 0, 200))
-    y = y0 + pad_y
-    for line, (_lw, lh) in zip(lines, sizes):
+    line_boxes = []
+    for line in lines:
         tokens = [p for p in KEYWORD_RE.split(line) if p] or [line]
-        tw, _ = _line_width(draw, line, font)
-        x = (width - tw) // 2
+        parts = []
+        cursor = 0
+        top = 0
+        bottom = 0
         for tok in tokens:
+            bbox = draw.textbbox((cursor, 0), tok, font=font, stroke_width=6)
+            parts.append((tok, cursor, bbox))
+            cursor = bbox[2]
+            top = min(top, bbox[1])
+            bottom = max(bottom, bbox[3])
+        line_boxes.append((parts, cursor, top, bottom))
+    gap = 8
+    text_w = max(w for _p, w, _t, _b in line_boxes)
+    text_h = sum(b - t for _p, _w, t, b in line_boxes) + gap * (len(line_boxes) - 1)
+    pad_y = 28
+    box_h = text_h + pad_y * 2
+    img = Image.new("RGBA", (width, box_h), (0, 0, 0, 255))
+    draw = ImageDraw.Draw(img)
+    y = (box_h - text_h) // 2
+    for parts, line_w, top, bottom in line_boxes:
+        x = (width - line_w) // 2
+        draw_y = y - top
+        for tok, tok_x, _bbox in parts:
             fill = GOLD if KEYWORD_RE.fullmatch(tok) else WHITE
-            draw.text((x, y), tok, font=font, fill=fill, stroke_width=5, stroke_fill=(0, 0, 0, 240))
-            bbox = draw.textbbox((x, y), tok, font=font, stroke_width=5)
-            x = bbox[2]
-        y += lh + gap
+            draw.text(
+                (x + tok_x, draw_y),
+                tok,
+                font=font,
+                fill=fill,
+                stroke_width=6,
+                stroke_fill=(0, 0, 0, 255),
+            )
+        y += (bottom - top) + gap
     img.save(path)
 
 
@@ -271,7 +290,7 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
                     "-i",
                     str(cap),
                     "-filter_complex",
-                    "overlay=(W-w)/2:H-h-300",
+                    "overlay=0:H*2/3-h/2",
                     "-c:v",
                     "libx264",
                     "-pix_fmt",
