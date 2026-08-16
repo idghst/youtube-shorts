@@ -25,7 +25,7 @@ description: Makes one Korean finance YouTube Short from RSS via local CLI plus 
    - 길이는 `scenes[].duration` 합 (50~60초)
    - YouTube 생략. `video.mp4` + `script.json` 유지
    - 성공 시 `youtube.uploads.status=rendered`
-5. 공개 업로드는 사용자가 `올려줘`/`업로드` 할 때, 또는 시간별 자동화가 게시할 때. **REQUIRED:** `.cursor/skills/shorts-upload/SKILL.md`. Studio Playwright가 기본. CLI는 `token.json` 있을 때만 `AUTO_PUBLISH=1 python -m shorts upload --dir out/<channel>/<job>`.
+5. 공개 업로드는 사용자가 `올려줘`/`업로드` 할 때, 또는 시간별 자동화가 게시할 때. **REQUIRED:** `.cursor/skills/shorts-upload/SKILL.md`. 크롬 computerUse가 기본(하단 독 아이콘 → 열린 창에서 `navigate`). CLI는 `token.json` 있을 때만 `AUTO_PUBLISH=1 python -m shorts upload --dir out/<channel>/<job>`.
 6. Studio로 올렸으면 `python -m shorts record --dir out/<channel>/<job> --status uploaded --video-id <id>`.
 
 실패 시 로그만 남기고 중단. picked/rendered/uploaded 해시는 같은 채널에서 다시 pick하지 않는다.
