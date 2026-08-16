@@ -1,0 +1,27 @@
+{
+  "license": "Mixkit Stock Music Free License",
+  "license_url": "https://mixkit.co/license/#musicFree",
+  "youtube_ok": true,
+  "attribution_required": false,
+  "tracks": [
+    {"file": "digital-clouds.mp3", "title": "Digital Clouds", "artist": "Alejandro Magaña (A. M.)", "situation": "차분한 분석", "use_when": "지표·금리·환율 배경", "avoid": "급등락 훅"},
+    {"file": "serene-moments.mp3", "title": "Serene Moments", "artist": "Ahjay Stelino", "situation": "차분한 분석", "use_when": "제도·세금·연금", "avoid": "위기·밈"},
+    {"file": "driving-ambition.mp3", "title": "Driving Ambition", "artist": "Ahjay Stelino", "situation": "훅 / 오프닝", "use_when": "첫 8초 훅, 오늘 나온 숫자", "avoid": "애도·사고"},
+    {"file": "almost-game-time.mp3", "title": "Almost Game Time", "artist": "Ahjay Stelino", "situation": "훅 / 오프닝", "use_when": "실적 발표 전, FOMC/금통위 대기", "avoid": "위로 엔딩"},
+    {"file": "running-out-of-time.mp3", "title": "Running Out of Time", "artist": "Ahjay Stelino", "situation": "속보 / 마감", "use_when": "마감 임박, 시한부 정책", "avoid": "느린 해설"},
+    {"file": "silent-descent.mp3", "title": "Silent Descent", "artist": "Eugenio Mininni", "situation": "위기 / 하락", "use_when": "폭락, 부채, 파산, 가계빚", "avoid": "호재·반등"},
+    {"file": "dark-shadows.mp3", "title": "Dark Shadows", "artist": "Ahjay Stelino", "situation": "경고 / 리스크", "use_when": "사기·부실·규제 리스크", "avoid": "밝은 전망"},
+    {"file": "torn-threads.mp3", "title": "Torn Threads", "artist": "Ahjay Stelino", "situation": "불안 / 불확실", "use_when": "전망 갈림, 혼조, 관망", "avoid": "확실한 호재"},
+    {"file": "echoes.mp3", "title": "Echoes", "artist": "Andrew Ev", "situation": "무거운 매크로", "use_when": "인구·부채·패권 같은 장기 구조", "avoid": "밈·빠른 훅"},
+    {"file": "raising-me-higher.mp3", "title": "Raising Me Higher", "artist": "Ahjay Stelino", "situation": "호재 / 상승", "use_when": "반등, 수주, 실적 서프라이즈", "avoid": "사고·적자"},
+    {"file": "dreaming-big.mp3", "title": "Dreaming Big", "artist": "Ahjay Stelino", "situation": "낙관 / 전망", "use_when": "성장·신산업 앞으로 프레임", "avoid": "경고·폭락"},
+    {"file": "what-about-action.mp3", "title": "What About Action?", "artist": "Diego Nava", "situation": "반등 / 모멘텀", "use_when": "거래량, 급반등", "avoid": "애도·단속"},
+    {"file": "close-up.mp3", "title": "Close Up", "artist": "Michael Ramir C.", "situation": "기업 / 실적", "use_when": "개별 기업 실적, IR 톤", "avoid": "위기 다큐"},
+    {"file": "cinematic-jazz.mp3", "title": "Cinematic Jazz", "artist": "Francisco Alvear", "situation": "정책 / 금리", "use_when": "금통위, 예산, 세제", "avoid": "영끌·밈"},
+    {"file": "cyberpunk-city.mp3", "title": "Cyberpunk City", "artist": "Alejandro Magaña (A. M.)", "situation": "테크 / 크립토", "use_when": "AI, 반도체, 코인, 핀테크", "avoid": "전통 제조·부동산 담보"},
+    {"file": "sci-fi-score.mp3", "title": "Sci-Fi Score", "artist": "Arulo", "situation": "테크 / 핀테크", "use_when": "결제·디지털 자산 인프라", "avoid": "가계·복지"},
+    {"file": "tech-house-vibes.mp3", "title": "Tech House vibes", "artist": "Alejandro Magaña (A. M.)", "situation": "테크 경쾌", "use_when": "앱·플랫폼·스타트업", "avoid": "파산"},
+    {"file": "finding-myself.mp3", "title": "Finding Myself", "artist": "Michael Ramir C.", "situation": "엔딩 / 정리", "use_when": "마지막 한 줄, 면책 직전", "avoid": "오프닝 훅"},
+    {"file": "hip-hop-02.mp3", "title": "Hip Hop 02", "artist": "Lily J", "situation": "영끌 / 밈 / 젊은 톤", "use_when": "영끌·빚투·소비 트렌드", "avoid": "사망·재난·정책 브리핑"}
+  ]
+}

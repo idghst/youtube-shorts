@@ -1,0 +1,27 @@
+rss:
+  - name: hankyung_finance
+    url: https://www.hankyung.com/feed/finance
+  - name: hankyung_economy
+    url: https://www.hankyung.com/feed/economy
+  - name: mk_economy
+    url: https://www.mk.co.kr/rss/30100041/
+  - name: reuters_business
+    url: https://feeds.reuters.com/reuters/businessNews
+  - name: cnbc_business
+    url: https://www.cnbc.com/id/10001147/device/rss/rss.html
+
+width: 1080
+height: 1920
+max_seconds: 60
+fps: 30
+bgm: assets/bgm/silent-descent.mp3
+bgm_volume: 0.32
+
+disclaimer: 본 영상은 정보 제공 목적이며 특정 종목의 매수·매도를 권유하지 않습니다. 투자 손실에 대한 책임은 투자자 본인에게 있습니다.
+
+youtube_category_id: "22"
+
+channels:
+  돈이웃:
+    youtube_channel_id: UCHUxp49IFZlHHCcg_LnL66A
+    studio_shorts: https://studio.youtube.com/channel/UCHUxp49IFZlHHCcg_LnL66A/videos/short
