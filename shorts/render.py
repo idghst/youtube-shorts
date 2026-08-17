@@ -137,22 +137,11 @@ def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
     lines = textwrap.wrap(text.replace("\n", " "), width=12) or [text]
     lines = lines[:2]
     font = _caption_font(76)
-    probe = Image.new("RGBA", (width, 10), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(probe)
+    scratch = Image.new("RGBA", (width, 420), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(scratch)
     sizes = [_line_width(draw, line, font) for line in lines]
     gap = 10
-    text_w = max(w for w, _h in sizes)
-    text_h = sum(h for _w, h in sizes) + gap * (len(lines) - 1)
-    pad_x, pad_y = 36, 22
-    box_w = min(width - 96, text_w + pad_x * 2)
-    box_h = text_h + pad_y * 2
-    img_h = box_h + 16
-    img = Image.new("RGBA", (width, img_h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    x0 = (width - box_w) // 2
-    y0 = 8
-    draw.rounded_rectangle((x0, y0, x0 + box_w, y0 + box_h), radius=20, fill=(0, 0, 0, 200))
-    y = y0 + pad_y
+    y = 40
     for line, (_lw, lh) in zip(lines, sizes):
         tokens = [p for p in KEYWORD_RE.split(line) if p] or [line]
         tw, _ = _line_width(draw, line, font)
@@ -163,6 +152,18 @@ def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
             bbox = draw.textbbox((x, y), tok, font=font, stroke_width=5)
             x = bbox[2]
         y += lh + gap
+    ink = scratch.getbbox()
+    if ink is None:
+        img = Image.new("RGBA", (width, 96), (0, 0, 0, 255))
+        img.save(path)
+        return
+    ink_w = ink[2] - ink[0]
+    ink_h = ink[3] - ink[1]
+    pad_y = 28
+    bar_h = ink_h + pad_y * 2
+    img = Image.new("RGBA", (width, bar_h), (0, 0, 0, 255))
+    crop = scratch.crop(ink)
+    img.paste(crop, ((width - ink_w) // 2, (bar_h - ink_h) // 2), crop)
     img.save(path)
 
 
@@ -280,7 +281,7 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
                     "-i",
                     str(cap),
                     "-filter_complex",
-                    "overlay=(W-w)/2:H-h-300",
+                    "overlay=0:H*2/3-h/2",
                     "-c:v",
                     "libx264",
                     "-pix_fmt",
