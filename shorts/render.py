@@ -131,6 +131,17 @@ def _line_width(draw, line: str, font) -> tuple[int, int]:
     return w, h
 
 
+CAPTION_OVERLAY = "overlay=0:H*2/3-h/2"
+
+
+def _ink_bbox(img) -> tuple[int, int, int, int]:
+    alpha = img.split()[-1]
+    box = alpha.getbbox()
+    if not box:
+        return (0, 0, img.width, img.height)
+    return box
+
+
 def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
     from PIL import Image, ImageDraw
 
@@ -141,18 +152,12 @@ def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
     draw = ImageDraw.Draw(probe)
     sizes = [_line_width(draw, line, font) for line in lines]
     gap = 10
-    text_w = max(w for w, _h in sizes)
     text_h = sum(h for _w, h in sizes) + gap * (len(lines) - 1)
-    pad_x, pad_y = 36, 22
-    box_w = min(width - 96, text_w + pad_x * 2)
-    box_h = text_h + pad_y * 2
-    img_h = box_h + 16
-    img = Image.new("RGBA", (width, img_h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    x0 = (width - box_w) // 2
-    y0 = 8
-    draw.rounded_rectangle((x0, y0, x0 + box_w, y0 + box_h), radius=20, fill=(0, 0, 0, 200))
-    y = y0 + pad_y
+    pad_y = 28
+    box_h = max(text_h + pad_y * 2, 120)
+    layer = Image.new("RGBA", (width, box_h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    y = 0
     for line, (_lw, lh) in zip(lines, sizes):
         tokens = [p for p in KEYWORD_RE.split(line) if p] or [line]
         tw, _ = _line_width(draw, line, font)
@@ -163,6 +168,13 @@ def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
             bbox = draw.textbbox((x, y), tok, font=font, stroke_width=5)
             x = bbox[2]
         y += lh + gap
+    ink = _ink_bbox(layer)
+    ink_w = ink[2] - ink[0]
+    ink_h = ink[3] - ink[1]
+    img = Image.new("RGBA", (width, box_h), (0, 0, 0, 255))
+    dest_x = (width - ink_w) // 2 - ink[0]
+    dest_y = (box_h - ink_h) // 2 - ink[1]
+    img.alpha_composite(layer, (dest_x, dest_y))
     img.save(path)
 
 
@@ -280,7 +292,7 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
                     "-i",
                     str(cap),
                     "-filter_complex",
-                    "overlay=(W-w)/2:H-h-300",
+                    CAPTION_OVERLAY,
                     "-c:v",
                     "libx264",
                     "-pix_fmt",
