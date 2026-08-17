@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+import time
 from datetime import datetime
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -131,24 +132,45 @@ def call_rpc(name: str, payload: dict, cfg: dict | None = None):
             "User-Agent": "Mozilla/5.0 (compatible; shorts/0.1; +local)",
         },
     )
-    try:
-        with urlopen(req, timeout=20) as resp:
-            raw = resp.read().decode("utf-8", errors="replace")
-    except HTTPError as exc:
-        err = exc.read().decode("utf-8", errors="replace") if exc.fp else ""
-        raise SystemExit("Supabase RPC %s 실패 %s: %s" % (name, exc.code, err[:500])) from exc
-    except URLError as exc:
-        raise SystemExit("Supabase 연결 실패: %s" % exc.reason) from exc
+    last_err = None
+    raw = ""
+    for attempt in range(4):
+        try:
+            with urlopen(req, timeout=20) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+            last_err = None
+            break
+        except HTTPError as exc:
+            err = exc.read().decode("utf-8", errors="replace") if exc.fp else ""
+            last_err = SystemExit("Supabase RPC %s 실패 %s: %s" % (name, exc.code, err[:500]))
+            if exc.code == 503 and attempt < 3:
+                time.sleep(1.2 * (attempt + 1))
+                continue
+            raise last_err from exc
+        except URLError as exc:
+            raise SystemExit("Supabase 연결 실패: %s" % exc.reason) from exc
+    if last_err:
+        raise last_err
     if not raw:
         return None
     return json.loads(raw)
+
+
+def _soft_rpc(name: str, payload: dict, cfg: dict | None = None):
+    try:
+        return call_rpc(name, payload, cfg=cfg)
+    except SystemExit as exc:
+        if "503" not in str(exc):
+            raise
+        log.warning("Supabase 일시 실패(%s). 로컬로 진행: %s", name, exc)
+        return None
 
 
 def claimed_remote_hashes(channel: str, cfg: dict | None = None) -> set:
     if not supabase_ready(cfg):
         log.warning("Supabase 없음. 로컬 shorts.db 만 본다. VM 간 중복 업로드가 날 수 있다.")
         return set()
-    remote = call_rpc("youtube_claimed_hashes", {"p_channel_key": channel}, cfg=cfg)
+    remote = _soft_rpc("youtube_claimed_hashes", {"p_channel_key": channel}, cfg=cfg)
     if remote is None:
         return set()
     if not isinstance(remote, list):
@@ -173,7 +195,7 @@ def try_claim(
     if not supabase_ready(cfg):
         log.warning("Supabase 없음. 로컬만 선점한다.")
         return True
-    claimed = call_rpc(
+    claimed = _soft_rpc(
         "youtube_try_claim",
         {
             "p_channel_key": channel,
@@ -186,6 +208,8 @@ def try_claim(
         },
         cfg=cfg,
     )
+    if claimed is None:
+        return True
     return bool(claimed)
 
 
@@ -236,7 +260,7 @@ def mark_used(
         return
     if status == "picked":
         return
-    call_rpc(
+    _soft_rpc(
         "youtube_upsert_upload",
         {
             "p_channel_key": channel,
