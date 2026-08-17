@@ -152,6 +152,7 @@ class PickJobTests(unittest.TestCase):
             patch("shorts.news.ensure_dirs"),
             patch("shorts.news.collect", return_value=[first, second]),
             patch("shorts.news.claimed_hashes", return_value=set()),
+            patch("shorts.news.recent_topics", return_value=[]),
             patch("shorts.news.try_claim", side_effect=fake_claim),
             patch("shorts.news.mark_used"),
         ):
