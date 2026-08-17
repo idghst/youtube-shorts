@@ -131,38 +131,40 @@ def _line_width(draw, line: str, font) -> tuple[int, int]:
     return w, h
 
 
-def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
+def _render_caption_line(line: str, font, width: int):
     from PIL import Image, ImageDraw
+
+    tokens = [p for p in KEYWORD_RE.split(line) if p] or [line]
+    strip = Image.new("RGBA", (width, 220), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(strip)
+    x = 20
+    y = 40
+    for tok in tokens:
+        fill = GOLD if KEYWORD_RE.fullmatch(tok) else WHITE
+        draw.text((x, y), tok, font=font, fill=fill, stroke_width=5, stroke_fill=(0, 0, 0, 240))
+        bbox = draw.textbbox((x, y), tok, font=font, stroke_width=5)
+        x = bbox[2]
+    ink = strip.getbbox()
+    return strip.crop(ink) if ink else strip
+
+
+def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
+    from PIL import Image
 
     lines = textwrap.wrap(text.replace("\n", " "), width=12) or [text]
     lines = lines[:2]
     font = _caption_font(76)
-    probe = Image.new("RGBA", (width, 10), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(probe)
-    sizes = [_line_width(draw, line, font) for line in lines]
-    gap = 10
-    text_w = max(w for w, _h in sizes)
-    text_h = sum(h for _w, h in sizes) + gap * (len(lines) - 1)
-    pad_x, pad_y = 36, 22
-    box_w = min(width - 96, text_w + pad_x * 2)
-    box_h = text_h + pad_y * 2
-    img_h = box_h + 16
-    img = Image.new("RGBA", (width, img_h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    x0 = (width - box_w) // 2
-    y0 = 8
-    draw.rounded_rectangle((x0, y0, x0 + box_w, y0 + box_h), radius=20, fill=(0, 0, 0, 200))
-    y = y0 + pad_y
-    for line, (_lw, lh) in zip(lines, sizes):
-        tokens = [p for p in KEYWORD_RE.split(line) if p] or [line]
-        tw, _ = _line_width(draw, line, font)
-        x = (width - tw) // 2
-        for tok in tokens:
-            fill = GOLD if KEYWORD_RE.fullmatch(tok) else WHITE
-            draw.text((x, y), tok, font=font, fill=fill, stroke_width=5, stroke_fill=(0, 0, 0, 240))
-            bbox = draw.textbbox((x, y), tok, font=font, stroke_width=5)
-            x = bbox[2]
-        y += lh + gap
+    rendered = [_render_caption_line(line, font, width) for line in lines]
+    gap = 8
+    text_h = sum(im.height for im in rendered) + gap * (len(rendered) - 1)
+    pad_y = 30
+    img_h = max(text_h + pad_y * 2, 120)
+    img = Image.new("RGBA", (width, img_h), (0, 0, 0, 235))
+    y = (img_h - text_h) // 2
+    for im in rendered:
+        x = (width - im.width) // 2
+        img.alpha_composite(im, (x, y))
+        y += im.height + gap
     img.save(path)
 
 
@@ -280,7 +282,7 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
                     "-i",
                     str(cap),
                     "-filter_complex",
-                    "overlay=(W-w)/2:H-h-300",
+                    "overlay=0:H*2/3-h/2",
                     "-c:v",
                     "libx264",
                     "-pix_fmt",
