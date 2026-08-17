@@ -131,28 +131,12 @@ def _line_width(draw, line: str, font) -> tuple[int, int]:
     return w, h
 
 
-def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
-    from PIL import Image, ImageDraw
+CAPTION_OVERLAY = "overlay=0:H*2/3-h/2"
 
-    lines = textwrap.wrap(text.replace("\n", " "), width=12) or [text]
-    lines = lines[:2]
-    font = _caption_font(76)
-    probe = Image.new("RGBA", (width, 10), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(probe)
-    sizes = [_line_width(draw, line, font) for line in lines]
+
+def _draw_caption_lines(draw, lines: list[str], font, width: int, y: int) -> None:
     gap = 10
-    text_w = max(w for w, _h in sizes)
-    text_h = sum(h for _w, h in sizes) + gap * (len(lines) - 1)
-    pad_x, pad_y = 36, 22
-    box_w = min(width - 96, text_w + pad_x * 2)
-    box_h = text_h + pad_y * 2
-    img_h = box_h + 16
-    img = Image.new("RGBA", (width, img_h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    x0 = (width - box_w) // 2
-    y0 = 8
-    draw.rounded_rectangle((x0, y0, x0 + box_w, y0 + box_h), radius=20, fill=(0, 0, 0, 200))
-    y = y0 + pad_y
+    sizes = [_line_width(draw, line, font) for line in lines]
     for line, (_lw, lh) in zip(lines, sizes):
         tokens = [p for p in KEYWORD_RE.split(line) if p] or [line]
         tw, _ = _line_width(draw, line, font)
@@ -163,6 +147,42 @@ def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
             bbox = draw.textbbox((x, y), tok, font=font, stroke_width=5)
             x = bbox[2]
         y += lh + gap
+
+
+def _bright_centroid(img) -> tuple[float, float, tuple[int, int, int, int]]:
+    pixels = img.load()
+    xs: list[int] = []
+    ys: list[int] = []
+    w, h = img.size
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = pixels[x, y]
+            if a > 180 and (r + g + b) > 400:
+                xs.append(x)
+                ys.append(y)
+    bbox = img.getbbox() or (0, 0, w, h)
+    if not xs:
+        return (w / 2, h / 2, bbox)
+    return (sum(xs) / len(xs), sum(ys) / len(ys), bbox)
+
+
+def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
+    from PIL import Image, ImageDraw
+
+    lines = textwrap.wrap(text.replace("\n", " "), width=12) or [text]
+    lines = lines[:2]
+    font = _caption_font(76)
+    probe = Image.new("RGBA", (width, 400), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(probe)
+    _draw_caption_lines(draw, lines, font, width, 40)
+    cx, cy, ink = _bright_centroid(probe)
+    ink_h = ink[3] - ink[1]
+    pad_y = 28
+    bar_h = max(ink_h + pad_y * 2, 96)
+    img = Image.new("RGBA", (width, bar_h), (0, 0, 0, 235))
+    dest_x = int(round(width / 2 - cx))
+    dest_y = int(round(bar_h / 2 - cy))
+    img.paste(probe, (dest_x, dest_y), probe)
     img.save(path)
 
 
@@ -280,7 +300,7 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
                     "-i",
                     str(cap),
                     "-filter_complex",
-                    "overlay=(W-w)/2:H-h-300",
+                    CAPTION_OVERLAY,
                     "-c:v",
                     "libx264",
                     "-pix_fmt",
