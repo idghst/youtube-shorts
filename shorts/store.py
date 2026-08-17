@@ -71,6 +71,34 @@ def _conflict_target(conn: sqlite3.Connection) -> str:
     return "channel, hash"
 
 
+def _sqlite_titles(channel: str, path: Path) -> list:
+    conn = connect(path)
+    try:
+        rows = conn.execute(
+            """
+            SELECT title FROM used_headlines
+            WHERE title != '' AND (channel = ? OR channel = '')
+            ORDER BY used_at DESC
+            LIMIT 40
+            """,
+            (channel,),
+        ).fetchall()
+    finally:
+        conn.close()
+    seen = set()
+    titles = []
+    for (title,) in rows:
+        text = (title or "").strip()
+        if text and text not in seen:
+            seen.add(text)
+            titles.append(text)
+    return titles
+
+
+def recent_titles(channel: str, path: Path = DB_PATH) -> list:
+    return _sqlite_titles(channel, path)
+
+
 def _sqlite_hashes(channel: str, path: Path) -> set:
     conn = connect(path)
     try:

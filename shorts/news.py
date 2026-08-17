@@ -14,7 +14,7 @@ from urllib.request import Request, urlopen
 
 from shorts.config import DEFAULT_CHANNEL, OUT_DIR, channel_dir, ensure_dirs, youtube_channel_id
 from shorts.models import Headline, slugify
-from shorts.store import mark_used, try_claim, used_hashes
+from shorts.store import mark_used, recent_titles, try_claim, used_hashes
 
 log = logging.getLogger("shorts")
 UA = "Mozilla/5.0 (compatible; shorts/0.1; +local)"
@@ -196,28 +196,77 @@ def _source_boost(headline: Headline, prefer: tuple) -> int:
     return 1 if any(headline.source.startswith(p) for p in prefer) else 0
 
 
-def choose_headline(unused: list, now: datetime | None = None) -> Headline:
-    """미사용 헤드라인 중 시니어 관심 → 금융 키워드 → 시간대 매체 → 최신 순."""
+_TOPIC_STOP = frozenset(
+    "것 수 등 및 더 덜 첫 오늘 앞으로 단독 한경 매경 프리미엄 today 전망 보도 소식 것".split()
+)
+
+
+def topic_tokens(title: str) -> set:
+    parts = re.findall(r"[가-힣A-Za-z0-9]+", (title or "").lower())
+    return {p for p in parts if len(p) >= 2 and p not in _TOPIC_STOP}
+
+
+def topic_overlap(a: str, b: str) -> int:
+    return len(topic_tokens(a) & topic_tokens(b))
+
+
+def recent_topics(channel: str, cfg: dict | None = None, out_dir: Path | None = None) -> list:
+    titles = list(recent_titles(channel))
+    root = Path(out_dir) / channel if out_dir else channel_dir(channel)
+    if root.is_dir():
+        for path in sorted(root.glob("*/headline.json"), reverse=True):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            title = str(data.get("title") or "").strip()
+            if title:
+                titles.append(title)
+    seen = set()
+    out = []
+    for title in titles:
+        if title not in seen:
+            seen.add(title)
+            out.append(title)
+    return out
+
+
+def _too_similar(headline: Headline, used_titles: list) -> bool:
+    return any(topic_overlap(headline.title, title) >= 3 for title in used_titles)
+
+
+def choose_headline(
+    unused: list,
+    now: datetime | None = None,
+    used_titles: list | None = None,
+) -> Headline:
+    """미사용 헤드라인 중 시니어 관심 → 금융 키워드 → 이전 주제와 안 겹침 → 시간대 매체 → 최신 순."""
     if not unused:
         raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
     prefer = _preferred_sources(now)
-    senior_hits = [h for h in unused if _senior_score(h) > 0]
-    finance_hits = [h for h in unused if _finance_score(h) > 0]
-    pool = senior_hits or finance_hits or unused
+    used = [t for t in (used_titles or []) if t]
+    fresh = [h for h in unused if not _too_similar(h, used)] if used else unused
+    pool_src = fresh or unused
+    senior_hits = [h for h in pool_src if _senior_score(h) > 0]
+    finance_hits = [h for h in pool_src if _finance_score(h) > 0]
+    pool = senior_hits or finance_hits or pool_src
 
     def sort_key(item: Headline):
+        overlap = max((topic_overlap(item.title, t) for t in used), default=0)
         return (
             _senior_score(item),
             _finance_score(item),
+            -overlap,
             _source_boost(item, prefer),
             _parse_date(item.published),
         )
 
     chosen = max(pool, key=sort_key)
     log.info(
-        "선정 점수 senior=%d finance=%d [%s] %s",
+        "선정 점수 senior=%d finance=%d overlap=%d [%s] %s",
         _senior_score(chosen),
         _finance_score(chosen),
+        max((topic_overlap(chosen.title, t) for t in used), default=0),
         chosen.source,
         chosen.title,
     )
@@ -228,18 +277,19 @@ def pick_headline(cfg: dict, channel: str = DEFAULT_CHANNEL, now: datetime | Non
     feeds = cfg.get("rss") or []
     claimed = claimed_hashes(channel, cfg=cfg)
     unused = [h for h in collect(feeds) if h.hash not in claimed]
-    return choose_headline(unused, now=now)
+    return choose_headline(unused, now=now, used_titles=recent_topics(channel, cfg=cfg))
 
 
 def pick_job(cfg: dict, channel: str = DEFAULT_CHANNEL, now: datetime | None = None) -> Path:
-    """미사용 헤드라인을 고르고 채널별로 Supabase에 선점한 뒤 잡 폴더를 만든다."""
+    """이전 주제를 보고 미사용 헤드라인을 고른 뒤 채널별로 Supabase에 선점한다."""
     feeds = cfg.get("rss") or []
     claimed = claimed_hashes(channel, cfg=cfg)
+    used = recent_topics(channel, cfg=cfg)
     unused = [h for h in collect(feeds) if h.hash not in claimed]
     yt_id = youtube_channel_id(cfg, channel)
     while unused:
-        headline = choose_headline(unused, now=now)
-        job = write_job(headline, channel)
+        headline = choose_headline(unused, now=now, used_titles=used)
+        job = write_job(headline, channel, used_titles=used)
         if not try_claim(
             headline,
             channel=channel,
@@ -264,13 +314,22 @@ def pick_job(cfg: dict, channel: str = DEFAULT_CHANNEL, now: datetime | None = N
     raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 이 채널에 이미 올린 것)")
 
 
-def write_job(headline: Headline, channel: str = DEFAULT_CHANNEL) -> Path:
+def write_job(
+    headline: Headline,
+    channel: str = DEFAULT_CHANNEL,
+    used_titles: list | None = None,
+) -> Path:
     ensure_dirs()
     stamp = datetime.now().strftime("%Y%m%d-%H%M")
     job = channel_dir(channel) / ("%s-%s" % (stamp, slugify(headline.title)))
     job.mkdir(parents=True, exist_ok=True)
     (job / "headline.json").write_text(
         json.dumps(headline.to_json(), ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (job / "used-topics.json").write_text(
+        json.dumps({"channel": channel, "titles": list(used_titles or [])}, ensure_ascii=False, indent=2)
+        + "\n",
         encoding="utf-8",
     )
     return job

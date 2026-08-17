@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 
 from shorts.config import CLIENT_SECRETS, TOKEN_PATH
+from shorts.copy import description_body, studio_title
 from shorts.models import Script
 
 log = logging.getLogger("shorts")
@@ -52,14 +53,14 @@ def auth() -> None:
 
 
 def description_with_disclaimer(script: Script, disclaimer: str) -> str:
-    parts = [script.description.strip()]
-    blob = "\n".join(parts)
+    parts = [description_body(script.description)]
+    blob = "\n".join(p for p in parts if p)
     if script.hashtags and script.hashtags not in blob:
         parts.append(script.hashtags)
-        blob = "\n".join(parts)
+        blob = "\n".join(p for p in parts if p)
     if "#Shorts" not in blob and "#shorts" not in blob:
-        parts.append("#Shorts")
-    if disclaimer.strip():
+        parts.append("#shorts")
+    if disclaimer.strip() and disclaimer.strip() not in blob:
         parts.append(disclaimer.strip())
     return "\n\n".join(p for p in parts if p)
 
@@ -68,10 +69,7 @@ def upload_video(script: Script, video: Path, cfg: dict) -> str:
     _Request, _Credentials, _Flow, build, MediaFileUpload = _google()
     creds = credentials()
     youtube = build("youtube", "v3", credentials=creds)
-    title = script.title.strip()
-    if "#Shorts" not in title and len(title) < 90:
-        title = title + " #Shorts"
-    title = title[:100]
+    title = studio_title(script.title)
     tags = list(script.tags)
     for extra in ("쇼츠", "재테크", "경제"):
         if extra not in tags:

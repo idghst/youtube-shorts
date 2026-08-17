@@ -197,6 +197,7 @@ class WriteJobTests(unittest.TestCase):
                 job = write_job(_h("주택연금 신청"), channel="돈이웃")
             self.assertEqual(job.parent.name, "돈이웃")
             self.assertTrue((job / "headline.json").is_file())
+            self.assertTrue((job / "used-topics.json").is_file())
 
 
 if __name__ == "__main__":

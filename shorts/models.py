@@ -107,13 +107,17 @@ def load_script(path: Path) -> Script:
     if not (50 <= total <= 60):
         raise ValueError("장면 duration 합은 50~60초 (지금 %.1f)" % total)
     tags = [str(t).strip() for t in (data.get("tags") or []) if str(t).strip()]
-    return Script(
+    script = Script(
         title=title,
         description=str(data.get("description") or "").strip(),
         tags=tags,
         hashtags=str(data.get("hashtags") or "").strip(),
         scenes=scenes,
     )
+    from shorts.copy import validate_script
+
+    validate_script(script)
+    return script
 
 
 def scene_image_path(job_dir: Path, index: int) -> Path:

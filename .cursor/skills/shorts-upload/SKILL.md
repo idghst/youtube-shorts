@@ -75,9 +75,9 @@ computerUse. 로그인된 시스템 크롬. Playwright MCP로 열지 마라.
 
 기존 돈이웃 Shorts와 같게.
 
-- 제목: `script.title`에서 `#Shorts` 제거. 제목에 해시태그 넣지 말 것.
-- 설명: `script.description` 본문(해시태그 줄 제외) + 빈 줄 + 해시태그.
-- 해시태그: `script.hashtags` + 없으면 추가 `#돈이웃 #쇼츠 #shorts`. `#Shorts`만 있으면 `#shorts`로 맞춤.
+- 제목: `script.title` 그대로. 해시태그 있으면 제거. 제목에 `#Shorts`를 붙이지 말 것.
+- 설명: `script.description` 본문(해시태그 줄·면책 제외) + 빈 줄 + `script.hashtags` + 빈 줄 + 면책.
+- 해시태그: `script.hashtags`. 없으면 `#돈이웃 #쇼츠 #shorts`. `#Shorts`만 있으면 `#shorts`로 맞춤.
 - 면책 문장은 설명에 이미 있으면 중복하지 말 것.
 
 ## 금지

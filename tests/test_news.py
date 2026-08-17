@@ -9,6 +9,7 @@ from shorts.news import (
     _senior_score,
     choose_headline,
     headline_hash,
+    topic_overlap,
 )
 
 
@@ -94,6 +95,14 @@ class ChooseHeadlineTests(unittest.TestCase):
     def test_empty_unused_exits(self):
         with self.assertRaises(SystemExit):
             choose_headline([])
+
+    def test_skips_similar_used_topic(self):
+        used = ["영끌 빚투에 가계빚 사상 첫 2000조 기준금리"]
+        similar = _h("영끌 빚투 가계빚 2000조 기준금리 인상")
+        other = _h("기초연금 지급액 인상 논의")
+        self.assertGreaterEqual(topic_overlap(similar.title, used[0]), 3)
+        chosen = choose_headline([similar, other], now=datetime(2026, 8, 17, 9), used_titles=used)
+        self.assertEqual(chosen.title, other.title)
 
 
 if __name__ == "__main__":
