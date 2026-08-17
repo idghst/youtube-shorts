@@ -235,6 +235,25 @@ def _too_similar(headline: Headline, used_titles: list) -> bool:
     return any(topic_overlap(headline.title, title) >= 3 for title in used_titles)
 
 
+_BLOCK_ANY = (
+    "특판예금",
+    "맞춤설계",
+    "총량목표",
+    "팔아치운 종목",
+    "세금만 다섯",
+    "5가지 세금",
+    "sk하이닉스",
+    "소부장",
+)
+
+
+def _blocked_topic(title: str) -> bool:
+    blob = (title or "").lower()
+    if any(key in blob for key in _BLOCK_ANY):
+        return True
+    return "청약" in blob and ("가구" in blob or "단지" in blob)
+
+
 def choose_headline(
     unused: list,
     now: datetime | None = None,
@@ -245,6 +264,9 @@ def choose_headline(
         raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
     prefer = _preferred_sources(now)
     used = [t for t in (used_titles or []) if t]
+    unused = [h for h in unused if not _blocked_topic(h.title)]
+    if not unused:
+        raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
     fresh = [h for h in unused if not _too_similar(h, used)] if used else unused
     pool_src = fresh or unused
     senior_hits = [h for h in pool_src if _senior_score(h) > 0]
