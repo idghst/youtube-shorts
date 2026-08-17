@@ -27,6 +27,9 @@ KEYWORD_RE = re.compile(
 )
 GOLD = (255, 213, 74, 255)
 WHITE = (255, 255, 255, 255)
+# 자막 바 세로 중심을 프레임 하단 2/3 지점에 둔다.
+CAPTION_OVERLAY = "overlay=0:H*2/3-h/2"
+BAR_FILL = (0, 0, 0, 235)
 
 
 def require_ffmpeg() -> str:
@@ -131,28 +134,17 @@ def _line_width(draw, line: str, font) -> tuple[int, int]:
     return w, h
 
 
-def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
+def _draw_caption_ink(text: str, width: int):
     from PIL import Image, ImageDraw
 
     lines = textwrap.wrap(text.replace("\n", " "), width=12) or [text]
     lines = lines[:2]
     font = _caption_font(76)
-    probe = Image.new("RGBA", (width, 10), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(probe)
+    canvas = Image.new("RGBA", (width, 420), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(canvas)
     sizes = [_line_width(draw, line, font) for line in lines]
     gap = 10
-    text_w = max(w for w, _h in sizes)
-    text_h = sum(h for _w, h in sizes) + gap * (len(lines) - 1)
-    pad_x, pad_y = 36, 22
-    box_w = min(width - 96, text_w + pad_x * 2)
-    box_h = text_h + pad_y * 2
-    img_h = box_h + 16
-    img = Image.new("RGBA", (width, img_h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    x0 = (width - box_w) // 2
-    y0 = 8
-    draw.rounded_rectangle((x0, y0, x0 + box_w, y0 + box_h), radius=20, fill=(0, 0, 0, 200))
-    y = y0 + pad_y
+    y = 40
     for line, (_lw, lh) in zip(lines, sizes):
         tokens = [p for p in KEYWORD_RE.split(line) if p] or [line]
         tw, _ = _line_width(draw, line, font)
@@ -163,6 +155,24 @@ def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
             bbox = draw.textbbox((x, y), tok, font=font, stroke_width=5)
             x = bbox[2]
         y += lh + gap
+    ink = canvas.split()[-1].getbbox()
+    return canvas, ink
+
+
+def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
+    from PIL import Image
+
+    canvas, ink = _draw_caption_ink(text, width)
+    if ink is None:
+        Image.new("RGBA", (width, 120), BAR_FILL).save(path)
+        return
+    ink_w = ink[2] - ink[0]
+    ink_h = ink[3] - ink[1]
+    pad_y = 28
+    bar_h = max(ink_h + pad_y * 2, 96)
+    img = Image.new("RGBA", (width, bar_h), BAR_FILL)
+    crop = canvas.crop(ink)
+    img.paste(crop, ((width - ink_w) // 2, (bar_h - ink_h) // 2), crop)
     img.save(path)
 
 
@@ -280,7 +290,7 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
                     "-i",
                     str(cap),
                     "-filter_complex",
-                    "overlay=(W-w)/2:H-h-300",
+                    CAPTION_OVERLAY,
                     "-c:v",
                     "libx264",
                     "-pix_fmt",
