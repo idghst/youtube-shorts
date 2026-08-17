@@ -131,38 +131,49 @@ def _line_width(draw, line: str, font) -> tuple[int, int]:
     return w, h
 
 
+CAPTION_OVERLAY = "overlay=0:H*2/3-h/2"
+
+
+def _ink_bbox(img) -> tuple[int, int, int, int] | None:
+    alpha = img.split()[-1]
+    return alpha.getbbox()
+
+
 def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
-    from PIL import Image, ImageDraw
+    from PIL import Image, ImageChops, ImageDraw
 
     lines = textwrap.wrap(text.replace("\n", " "), width=12) or [text]
     lines = lines[:2]
-    font = _caption_font(76)
+    font = _caption_font(80)
     probe = Image.new("RGBA", (width, 10), (0, 0, 0, 0))
     draw = ImageDraw.Draw(probe)
     sizes = [_line_width(draw, line, font) for line in lines]
-    gap = 10
-    text_w = max(w for w, _h in sizes)
+    gap = 8
     text_h = sum(h for _w, h in sizes) + gap * (len(lines) - 1)
-    pad_x, pad_y = 36, 22
-    box_w = min(width - 96, text_w + pad_x * 2)
-    box_h = text_h + pad_y * 2
-    img_h = box_h + 16
-    img = Image.new("RGBA", (width, img_h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    x0 = (width - box_w) // 2
-    y0 = 8
-    draw.rounded_rectangle((x0, y0, x0 + box_w, y0 + box_h), radius=20, fill=(0, 0, 0, 200))
-    y = y0 + pad_y
+    pad_y = 32
+    img_h = text_h + pad_y * 2
+    text_layer = Image.new("RGBA", (width, img_h), (0, 0, 0, 0))
+    tdraw = ImageDraw.Draw(text_layer)
+    y = pad_y
     for line, (_lw, lh) in zip(lines, sizes):
         tokens = [p for p in KEYWORD_RE.split(line) if p] or [line]
-        tw, _ = _line_width(draw, line, font)
+        tw, _ = _line_width(tdraw, line, font)
         x = (width - tw) // 2
         for tok in tokens:
             fill = GOLD if KEYWORD_RE.fullmatch(tok) else WHITE
-            draw.text((x, y), tok, font=font, fill=fill, stroke_width=5, stroke_fill=(0, 0, 0, 240))
-            bbox = draw.textbbox((x, y), tok, font=font, stroke_width=5)
+            tdraw.text((x, y), tok, font=font, fill=fill, stroke_width=5, stroke_fill=(0, 0, 0, 240))
+            bbox = tdraw.textbbox((x, y), tok, font=font, stroke_width=5)
             x = bbox[2]
         y += lh + gap
+    ink = _ink_bbox(text_layer)
+    if ink:
+        ink_cx = (ink[0] + ink[2]) / 2
+        ink_cy = (ink[1] + ink[3]) / 2
+        text_layer = ImageChops.offset(
+            text_layer, int(width / 2 - ink_cx), int(img_h / 2 - ink_cy)
+        )
+    img = Image.new("RGBA", (width, img_h), (0, 0, 0, 235))
+    img = Image.alpha_composite(img, text_layer)
     img.save(path)
 
 
@@ -280,7 +291,7 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
                     "-i",
                     str(cap),
                     "-filter_complex",
-                    "overlay=(W-w)/2:H-h-300",
+                    CAPTION_OVERLAY,
                     "-c:v",
                     "libx264",
                     "-pix_fmt",
