@@ -137,25 +137,13 @@ def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
     lines = textwrap.wrap(text.replace("\n", " "), width=12) or [text]
     lines = lines[:2]
     font = _caption_font(76)
-    probe = Image.new("RGBA", (width, 10), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(probe)
-    sizes = [_line_width(draw, line, font) for line in lines]
     gap = 10
-    text_w = max(w for w, _h in sizes)
-    text_h = sum(h for _w, h in sizes) + gap * (len(lines) - 1)
-    pad_x, pad_y = 36, 22
-    box_w = min(width - 96, text_w + pad_x * 2)
-    box_h = text_h + pad_y * 2
-    img_h = box_h + 16
-    img = Image.new("RGBA", (width, img_h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    x0 = (width - box_w) // 2
-    y0 = 8
-    draw.rounded_rectangle((x0, y0, x0 + box_w, y0 + box_h), radius=20, fill=(0, 0, 0, 200))
-    y = y0 + pad_y
-    for line, (_lw, lh) in zip(lines, sizes):
+    scratch = Image.new("RGBA", (width, 600), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(scratch)
+    y = 40
+    for line in lines:
         tokens = [p for p in KEYWORD_RE.split(line) if p] or [line]
-        tw, _ = _line_width(draw, line, font)
+        tw, lh = _line_width(draw, line, font)
         x = (width - tw) // 2
         for tok in tokens:
             fill = GOLD if KEYWORD_RE.fullmatch(tok) else WHITE
@@ -163,6 +151,16 @@ def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
             bbox = draw.textbbox((x, y), tok, font=font, stroke_width=5)
             x = bbox[2]
         y += lh + gap
+    ink = scratch.getbbox()
+    if ink is None:
+        text_img = Image.new("RGBA", (width, 80), (0, 0, 0, 0))
+    else:
+        text_img = scratch.crop(ink)
+    ink_w, ink_h = text_img.size
+    pad_y = 28
+    box_h = ink_h + pad_y * 2
+    img = Image.new("RGBA", (width, box_h), (0, 0, 0, 255))
+    img.alpha_composite(text_img, ((width - ink_w) // 2, (box_h - ink_h) // 2))
     img.save(path)
 
 
@@ -280,7 +278,7 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
                     "-i",
                     str(cap),
                     "-filter_complex",
-                    "overlay=(W-w)/2:H-h-300",
+                    "overlay=0:H*2/3-h/2",
                     "-c:v",
                     "libx264",
                     "-pix_fmt",
