@@ -33,6 +33,7 @@
 ### 업로드
 
 - 공개 업로드는 사용자 요청 또는 시간별 자동화일 때만. `client_secrets.json` 없으면 CLI 업로드 불가.
+- Studio 메타: `.venv/bin/python -m shorts meta --dir <잡폴더>`. 제목·설명 후 **`자세히`를 누르고 아래로 스크롤**해서 해시태그 칸을 채운다. 설명의 `#`만으로는 안 붙는다. 상세는 `.cursor/skills/shorts-upload/SKILL.md`.
 
 ### 무시 경로
 

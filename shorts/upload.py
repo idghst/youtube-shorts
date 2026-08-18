@@ -4,8 +4,10 @@ import logging
 from pathlib import Path
 
 from shorts.config import CLIENT_SECRETS, TOKEN_PATH
-from shorts.copy import description_body, studio_title
+from shorts.copy import description_body, parse_hashtags, studio_title
 from shorts.models import Script
+
+_TAG_SKIP = frozenset({"돈이웃", "쇼츠", "shorts", "Shorts"})
 
 log = logging.getLogger("shorts")
 SCOPE = ["https://www.googleapis.com/auth/youtube.upload"]
@@ -63,6 +65,22 @@ def description_with_disclaimer(script: Script, disclaimer: str) -> str:
     if disclaimer.strip() and disclaimer.strip() not in blob:
         parts.append(disclaimer.strip())
     return "\n\n".join(p for p in parts if p)
+
+
+def studio_meta(script: Script, disclaimer: str) -> dict:
+    """Studio에 그대로 붙일 제목·설명·해시태그·태그. 손으로 다시 치지 말 것."""
+    hashtags = (script.hashtags or "").strip()
+    if not hashtags:
+        hashtags = "#돈이웃 #쇼츠 #shorts"
+    chips = [item.lstrip("#") for item in parse_hashtags(hashtags)]
+    tags = [item for item in script.tags if item and item not in _TAG_SKIP]
+    return {
+        "title": studio_title(script.title),
+        "description": description_with_disclaimer(script, disclaimer),
+        "hashtags": hashtags,
+        "hashtag_chips": chips,
+        "tags": tags,
+    }
 
 
 def upload_video(script: Script, video: Path, cfg: dict) -> str:

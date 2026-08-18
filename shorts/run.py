@@ -18,6 +18,7 @@ from shorts.models import load_headline, load_script, beat_media_path
 from shorts.news import pick_job
 from shorts.render import render_job, require_ffmpeg
 from shorts.store import mark_used
+from shorts.upload import studio_meta
 
 log = logging.getLogger("shorts")
 
@@ -144,6 +145,15 @@ def cmd_upload(dir_arg: str | None, dry_run: bool) -> None:
     video_id = upload_video(script, video, cfg)
     record_job(job, "uploaded", cfg=cfg, video_path=str(video), video_id=video_id)
     print("https://youtu.be/%s" % video_id)
+
+
+def cmd_meta(dir_arg: str | None) -> dict:
+    cfg = load_config()
+    job = resolve_job(dir_arg, cfg, pick_if_needed=False)
+    script = load_script(job / "script.json")
+    meta = studio_meta(script, cfg.get("disclaimer") or "")
+    print(json.dumps(meta, ensure_ascii=False, indent=2))
+    return meta
 
 
 def cmd_record(dir_arg: str, status: str, video_id: str = "") -> None:

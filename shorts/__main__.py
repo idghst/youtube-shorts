@@ -38,6 +38,9 @@ def main(argv: list | None = None) -> int:
     )
     run_p.add_argument("--dry-run", action="store_true", help="업로드 생략, 로컬 mp4+JSON만")
 
+    meta_p = sub.add_parser("meta", help="Studio에 붙일 제목·설명·해시태그·태그 출력")
+    meta_p.add_argument("--dir", help="잡 폴더 out/<channel>/<job>")
+
     record_p = sub.add_parser("record", help="youtube.uploads 상태 기록 (Studio 업로드 후)")
     record_p.add_argument("--dir", required=True, help="잡 폴더 out/<channel>/<job>")
     record_p.add_argument(
@@ -74,6 +77,10 @@ def main(argv: list | None = None) -> int:
             from shorts.run import cmd_run
 
             cmd_run(args.dir, dry_run=args.dry_run, channel=args.channel)
+        elif args.cmd == "meta":
+            from shorts.run import cmd_meta
+
+            cmd_meta(args.dir)
         elif args.cmd == "record":
             from shorts.run import cmd_record
 
