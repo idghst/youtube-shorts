@@ -211,7 +211,7 @@ def topic_overlap(a: str, b: str) -> int:
 
 
 def recent_topics(channel: str, cfg: dict | None = None, out_dir: Path | None = None) -> list:
-    titles = list(recent_titles(channel))
+    titles = list(recent_titles(channel, cfg=cfg))
     root = Path(out_dir) / channel if out_dir else channel_dir(channel)
     if root.is_dir():
         for path in sorted(root.glob("*/headline.json"), reverse=True):
