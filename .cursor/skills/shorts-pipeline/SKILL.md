@@ -29,7 +29,7 @@ description: Makes one Korean finance YouTube Short from RSS via local CLI plus 
 4. **제목**: 대본을 본 뒤에 `title`. 대본 첫 줄을 옮기지 말 것. 내 돈 상황 + 숫자 필수.
 5. **설명**: 제목 다음에 `description` 본문만.
 6. **해시태그**: `hashtags`와 `tags`. 그다음 `script.json`을 저장.
-7. **이미지**: 아래 **화면** 절로 비트마다 프롬프트를 쓴 뒤, Cursor **GenerateImage** (`aspect_ratio: 9:16`) → `beat-01.png` …. 3초당 1장. 60초면 20장. 직전 컷(+ beat-01)을 레퍼런스로 얼굴·옷을 고정. 실사 사람·망가체 금지. 동영상 클립·imagegen CLI / OPENAI_API_KEY 폴백 금지.
+7. **이미지**: 아래 **화면** 절로 비트마다 프롬프트를 쓴 뒤, Cursor **GenerateImage** (`aspect_ratio: 9:16`) → `beat-01.png` …. 3초당 1장. 권장 48초/16장. 직전 컷(+ beat-01)을 레퍼런스로 얼굴·옷을 고정. 실사 사람·망가체 금지. 동영상 클립·imagegen CLI / OPENAI_API_KEY 폴백 금지.
 8. **썸네일**: 아래 **썸네일** 절로 GenerateImage `aspect_ratio: 16:9` → `thumb.png`. 업로드 때 Studio에 반드시 올린다.
 9. **영상**: `.venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>` → `video.mp4`. duration은 3초 배수, 합 48~60초(권장 48초/16장). 성공 시 `rendered`.
 10. **업로드**: 사용자가 `올려줘`/`업로드` 할 때, 또는 시간별 자동화일 때. **REQUIRED:** `.cursor/skills/shorts-upload/SKILL.md`. 먼저 `.venv/bin/python -m shorts meta --dir <잡폴더>`. Studio에서 제목·설명 다음에 **`자세히`를 누르고 아래로 스크롤**해서 해시태그 칸에 `meta.hashtags`를 넣는다. 설명의 `#`만으로 대체하지 마라. 태그 칸에는 `meta.tags`. 해시태그 칸이 비면 `다음` 금지.
@@ -149,7 +149,7 @@ scenes 4~5개. 훅 + 사실 + 더 아픈 사실 + 내 돈. 장면 `duration`은 
 **한 쇼츠 = 한 `style.anchor` + 한 `style.face` + 한 `style.wardrobe`.** 모든 beat `image_prompt`에 세 문장과 `exactly two hands and two feet, no extra limbs`를 그대로 넣는다.
 
 이어짐:
-- 20장은 같은 하루의 연속 컷. 비트마다 행동이 한 걸음만 바뀐다. **그 3초 자막의 사실**을 보여라 (고지서, 빈 통장, 줄 선 우산, 저울). 산책·창밖만 이어가면 메시지가 죽는다. 화면에 한글·숫자는 쓰지 말고, 숫자는 자막이 말한다.
+- 16장은 같은 하루의 연속 컷. 비트마다 행동이 한 걸음만 바뀐다. **그 3초 자막의 사실**을 보여라 (고지서, 빈 통장, 줄 선 우산, 저울). 산책·창밖만 이어가면 메시지가 죽는다. 화면에 한글·숫자는 쓰지 말고, 숫자는 자막이 말한다.
 - 갑자기 다른 사람·다른 옷·다른 마을이면 다시 생성.
 - `style.face`에 나이·머리·이목구비를 잠근다. 예: `same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age`
 - `style.wardrobe`에 겉옷·색을 잠근다. 컷마다 옷이 바뀌면 다시 생성.
