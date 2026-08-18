@@ -4,7 +4,6 @@ import logging
 import re
 import shutil
 import subprocess
-import textwrap
 from pathlib import Path
 
 from shorts.config import ROOT
@@ -27,6 +26,10 @@ KEYWORD_RE = re.compile(
 )
 GOLD = (255, 213, 74, 255)
 WHITE = (255, 255, 255, 255)
+CAPTION_OVERLAY = "overlay=0:H*2/3-h/2"
+CAPTION_INK_PAD_X = 48
+CAPTION_BAR_PAD_Y = 30
+CAPTION_GAP = 10
 
 
 def require_ffmpeg() -> str:
@@ -131,38 +134,64 @@ def _line_width(draw, line: str, font) -> tuple[int, int]:
     return w, h
 
 
+def wrap_caption_lines(text: str, draw, font, max_width: int) -> list[str]:
+    raw = (text or "").replace("\n", " ").strip() or " "
+    width, _h = _line_width(draw, raw, font)
+    if width <= max_width:
+        return [raw]
+    lines: list[str] = []
+    buf = ""
+    for ch in raw:
+        trial = buf + ch
+        tw, _th = _line_width(draw, trial.strip() or trial, font)
+        if buf and tw > max_width:
+            lines.append(buf.strip())
+            buf = ch
+            if len(lines) == 2:
+                break
+        else:
+            buf = trial
+    if len(lines) < 2 and buf.strip():
+        lines.append(buf.strip())
+    return lines[:2] or [raw]
+
+
 def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
     from PIL import Image, ImageDraw
 
-    lines = textwrap.wrap(text.replace("\n", " "), width=12) or [text]
-    lines = lines[:2]
     font = _caption_font(76)
     probe = Image.new("RGBA", (width, 10), (0, 0, 0, 0))
     draw = ImageDraw.Draw(probe)
+    max_text_w = width - CAPTION_INK_PAD_X * 2
+    lines = wrap_caption_lines(text, draw, font, max_text_w)
     sizes = [_line_width(draw, line, font) for line in lines]
-    gap = 10
-    text_w = max(w for w, _h in sizes)
-    text_h = sum(h for _w, h in sizes) + gap * (len(lines) - 1)
-    pad_x, pad_y = 36, 22
-    box_w = min(width - 96, text_w + pad_x * 2)
-    box_h = text_h + pad_y * 2
-    img_h = box_h + 16
-    img = Image.new("RGBA", (width, img_h), (0, 0, 0, 0))
+    text_h = sum(h for _w, h in sizes) + CAPTION_GAP * (len(lines) - 1)
+    bar_h = text_h + CAPTION_BAR_PAD_Y * 2
+    img = Image.new("RGBA", (width, bar_h), (0, 0, 0, 235))
     draw = ImageDraw.Draw(img)
-    x0 = (width - box_w) // 2
-    y0 = 8
-    draw.rounded_rectangle((x0, y0, x0 + box_w, y0 + box_h), radius=20, fill=(0, 0, 0, 200))
-    y = y0 + pad_y
+    y = (bar_h - text_h) // 2
     for line, (_lw, lh) in zip(lines, sizes):
         tokens = [p for p in KEYWORD_RE.split(line) if p] or [line]
         tw, _ = _line_width(draw, line, font)
         x = (width - tw) // 2
+        ink_top = None
+        ink_bottom = None
+        for tok in tokens:
+            bbox = draw.textbbox((x, 0), tok, font=font, stroke_width=5)
+            if ink_top is None:
+                ink_top = bbox[1]
+                ink_bottom = bbox[3]
+            else:
+                ink_top = min(ink_top, bbox[1])
+                ink_bottom = max(ink_bottom, bbox[3])
+        ink_h = max((ink_bottom or lh) - (ink_top or 0), 1)
+        draw_y = y + (lh - ink_h) // 2 - (ink_top or 0)
         for tok in tokens:
             fill = GOLD if KEYWORD_RE.fullmatch(tok) else WHITE
-            draw.text((x, y), tok, font=font, fill=fill, stroke_width=5, stroke_fill=(0, 0, 0, 240))
-            bbox = draw.textbbox((x, y), tok, font=font, stroke_width=5)
+            draw.text((x, draw_y), tok, font=font, fill=fill, stroke_width=5, stroke_fill=(0, 0, 0, 240))
+            bbox = draw.textbbox((x, draw_y), tok, font=font, stroke_width=5)
             x = bbox[2]
-        y += lh + gap
+        y += lh + CAPTION_GAP
     img.save(path)
 
 
@@ -280,7 +309,7 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
                     "-i",
                     str(cap),
                     "-filter_complex",
-                    "overlay=(W-w)/2:H-h-300",
+                    CAPTION_OVERLAY,
                     "-c:v",
                     "libx264",
                     "-pix_fmt",
