@@ -211,7 +211,7 @@ def topic_overlap(a: str, b: str) -> int:
 
 
 def recent_topics(channel: str, cfg: dict | None = None, out_dir: Path | None = None) -> list:
-    titles = list(recent_titles(channel))
+    titles = list(recent_titles(channel, cfg=cfg))
     root = Path(out_dir) / channel if out_dir else channel_dir(channel)
     if root.is_dir():
         for path in sorted(root.glob("*/headline.json"), reverse=True):
@@ -231,6 +231,39 @@ def recent_topics(channel: str, cfg: dict | None = None, out_dir: Path | None = 
     return out
 
 
+def _blocked_topic(headline: Headline) -> bool:
+    """이미 올린 각도·시니어와 먼 기업/청약 단신을 다시 집어 올리지 않는다."""
+    blob = _blob(headline)
+    blocked = (
+        "맞춤설계",
+        "특판예금",
+        "총량목표",
+        "팔아치운",
+        "sk하이닉스",
+        "소부장",
+        "가계빚 2000",
+        "가계부채 2000",
+        "관리비 할인",
+        "가업상속",
+        "문턱 30년",
+        "지수연동예금",
+        "pf대출",
+        "pf 연체",
+        "이사비",
+        "중개보수",
+        "장특공제",
+    )
+    if any(key in blob for key in blocked):
+        return True
+    if all(key in blob for key in ("취득", "보유", "양도", "상속", "증여")):
+        return True
+    if "세금" in blob and "다섯" in blob:
+        return True
+    if "청약" in blob and ("가구" in blob or "단지" in blob):
+        return True
+    return False
+
+
 def _too_similar(headline: Headline, used_titles: list) -> bool:
     return any(topic_overlap(headline.title, title) >= 3 for title in used_titles)
 
@@ -245,8 +278,10 @@ def choose_headline(
         raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
     prefer = _preferred_sources(now)
     used = [t for t in (used_titles or []) if t]
-    fresh = [h for h in unused if not _too_similar(h, used)] if used else unused
-    pool_src = fresh or unused
+    open_pool = [h for h in unused if not _blocked_topic(h)]
+    base = open_pool or unused
+    fresh = [h for h in base if not _too_similar(h, used)] if used else base
+    pool_src = fresh or base
     senior_hits = [h for h in pool_src if _senior_score(h) > 0]
     finance_hits = [h for h in pool_src if _finance_score(h) > 0]
     pool = senior_hits or finance_hits or pool_src

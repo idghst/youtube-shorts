@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from shorts.models import Headline
 from shorts.news import claimed_hashes, headline_hash, pick_job, write_job
-from shorts.store import connect, mark_used, try_claim, used_hashes
+from shorts.store import connect, mark_used, recent_titles, try_claim, used_hashes
 
 
 def _h(title: str, source: str = "hankyung_finance") -> Headline:
@@ -75,6 +75,8 @@ class RpcStoreTests(unittest.TestCase):
             self.calls.append((name, payload))
             if name == "youtube_claimed_hashes":
                 return ["aa" * 32]
+            if name == "youtube_recent_titles":
+                return ["기초연금 인상", "전세 보증금"]
             if name == "youtube_try_claim":
                 return payload["p_headline_hash"] != "aa" * 32
             if name == "youtube_upsert_upload":
@@ -85,6 +87,18 @@ class RpcStoreTests(unittest.TestCase):
 
         store.rpc_impl = fake
         self.addCleanup(setattr, store, "rpc_impl", None)
+
+    def test_recent_titles_merges_remote(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "shorts.db"
+            titles = recent_titles(
+                "돈이웃",
+                path=db,
+                cfg={"supabase": {"url": "http://x", "publishable_key": "k"}},
+            )
+        self.assertIn("기초연금 인상", titles)
+        self.assertEqual(self.calls[0][0], "youtube_recent_titles")
+        self.assertEqual(self.calls[0][1]["p_channel_key"], "돈이웃")
 
     def test_used_hashes_merges_remote(self):
         with tempfile.TemporaryDirectory() as tmp:

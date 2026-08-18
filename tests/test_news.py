@@ -5,6 +5,7 @@ from datetime import datetime
 
 from shorts.models import Headline
 from shorts.news import (
+    _blocked_topic,
     _finance_score,
     _senior_score,
     choose_headline,
@@ -95,6 +96,13 @@ class ChooseHeadlineTests(unittest.TestCase):
     def test_empty_unused_exits(self):
         with self.assertRaises(SystemExit):
             choose_headline([])
+
+    def test_skips_blocked_special_deposit(self):
+        blocked = _h("증시에 데인 예테크족 특판예금으로 달려갔다")
+        other = _h("기초연금 지급액 인상 논의")
+        self.assertTrue(_blocked_topic(blocked))
+        chosen = choose_headline([blocked, other], now=datetime(2026, 8, 17, 9))
+        self.assertEqual(chosen.title, other.title)
 
     def test_skips_similar_used_topic(self):
         used = ["영끌 빚투에 가계빚 사상 첫 2000조 기준금리"]
