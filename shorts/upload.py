@@ -4,7 +4,14 @@ import logging
 from pathlib import Path
 
 from shorts.config import CLIENT_SECRETS, TOKEN_PATH
-from shorts.copy import description_body, missing_required_hashtags, studio_hashtags, studio_tags, studio_title
+from shorts.copy import (
+    description_body,
+    missing_required_hashtags,
+    parse_hashtags,
+    studio_hashtags,
+    studio_tags,
+    studio_title,
+)
 from shorts.models import Script, thumb_media_path
 
 log = logging.getLogger("shorts")
@@ -62,6 +69,18 @@ def description_with_disclaimer(script: Script, disclaimer: str) -> str:
     if missing:
         raise ValueError("설명에 주제 해시태그 3개 이상 필요")
     return blob
+
+
+def studio_meta(script: Script, disclaimer: str) -> dict:
+    """Studio에 그대로 붙일 제목·설명·해시태그·태그. 손으로 다시 치지 말 것."""
+    hashtags = studio_hashtags(script)
+    return {
+        "title": studio_title(script.title),
+        "description": description_with_disclaimer(script, disclaimer),
+        "hashtags": hashtags,
+        "hashtag_chips": [item.lstrip("#") for item in parse_hashtags(hashtags)],
+        "tags": studio_tags(script),
+    }
 
 
 def upload_video(script: Script, video: Path, cfg: dict) -> str:

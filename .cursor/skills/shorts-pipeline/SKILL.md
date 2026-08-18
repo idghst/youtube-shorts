@@ -25,14 +25,14 @@ description: Makes one Korean finance YouTube Short from RSS via local CLI plus 
 
 1. **이전 주제** + **주제 선정**: `.venv/bin/python -m shorts pick --channel 돈이웃` → stdout이 잡 폴더. 시니어 관심(연금·노후·건보·상속·예적금·부동산) 우선. 숫자·삭감·인상 같은 훅이 있으면 더 앞. “쓸 헤드라인 없음”이면 중단.
 2. **이 쇼츠의 화풍 하나**: `style.anchor`·`style.face`·`style.wardrobe`를 먼저 고정한다. 쇼츠마다 달라도 된다. **한 쇼츠 안 컷은 같은 얼굴·나이·옷·마을·빛이어야 한다.**
-3. **대본**: `headline.json`과 `used-topics.json`을 보고 `script.json`의 `scenes`만 먼저 쓴다. 장면은 스토리가 이어지게. OpenAI/Gemini HTTP 금지. 이전 제목과 같은 각도·같은 훅 금지.
+3. **대본**: `headline.json`과 `used-topics.json`을 보고 `script.json`의 `scenes`만 먼저 쓴다. **자막이 뉴스다.** 그림만 이어지고, 자막은 숫자·삭감·인상·내 돈 공포. 산책·창밖 정서는 자막에 쓰지 마라. OpenAI/Gemini HTTP 금지. 이전 제목과 같은 각도·같은 훅 금지.
 4. **제목**: 대본을 본 뒤에 `title`. 대본 첫 줄을 옮기지 말 것. 숫자 또는 물음표 필수.
 5. **설명**: 제목 다음에 `description` 본문만.
 6. **해시태그**: `hashtags`와 `tags`. 그다음 `script.json`을 저장.
 7. **이미지**: 아래 **화면** 절로 비트마다 프롬프트를 쓴 뒤, Cursor **GenerateImage** (`aspect_ratio: 9:16`) → `beat-01.png` …. 3초당 1장. 60초면 20장. 직전 컷(+ beat-01)을 레퍼런스로 얼굴·옷을 고정. 실사 사람·망가체 금지. 동영상 클립·imagegen CLI / OPENAI_API_KEY 폴백 금지.
 8. **썸네일**: 아래 **썸네일** 절로 GenerateImage `aspect_ratio: 16:9` → `thumb.png`. 업로드 때 Studio에 반드시 올린다.
 9. **영상**: `.venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>` → `video.mp4`. duration은 3초 배수, 합 48~60초(권장 60초/20장). 성공 시 `rendered`.
-10. **업로드**: 사용자가 `올려줘`/`업로드` 할 때, 또는 시간별 자동화일 때. **REQUIRED:** `.cursor/skills/shorts-upload/SKILL.md`.
+10. **업로드**: 사용자가 `올려줘`/`업로드` 할 때, 또는 시간별 자동화일 때. **REQUIRED:** `.cursor/skills/shorts-upload/SKILL.md`. 먼저 `.venv/bin/python -m shorts meta --dir <잡폴더>`. Studio에서 제목·설명 다음에 **`자세히`를 누르고 아래로 스크롤**해서 해시태그 칸에 `meta.hashtags`를 넣는다. 설명의 `#`만으로 대체하지 마라. 태그 칸에는 `meta.tags`. 해시태그 칸이 비면 `다음` 금지.
 11. **기록**: Studio로 올렸으면 `.venv/bin/python -m shorts record --dir out/<channel>/<job> --status uploaded --video-id <id>`.
 
 실패 시 로그만 남기고 중단.
@@ -57,7 +57,7 @@ description: Makes one Korean finance YouTube Short from RSS via local CLI plus 
     {
       "text": "가계빚이 2000조를 넘겼어요. 이자가 더 문제예요",
       "duration": 12,
-      "captions": ["이자가 더 붙는다고요?", "가계빚이 2000조예요"],
+      "captions": ["이자만 3조가 더 붙어요?", "가계빚이 2000조예요"],
       "beats": [
         {"image_prompt": "the same silver-haired Korean woman in a cream cardigan, painterly animated film, luminous dusk sky. same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age. same cream cardigan over ivory blouse every beat. exactly two hands and two feet, no extra limbs. She reads an unmarked envelope by the apartment window. Soft theatrical animation. Vertical 9:16."},
         {"image_prompt": "the same silver-haired Korean woman in a cream cardigan, painterly animated film, luminous dusk sky. same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age. same cream cardigan over ivory blouse every beat. exactly two hands and two feet, no extra limbs. She turns the envelope over with both hands. Soft theatrical animation. Vertical 9:16."},
@@ -69,7 +69,7 @@ description: Makes one Korean finance YouTube Short from RSS via local CLI plus 
 }
 ```
 
-scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration`은 3초 배수, `beats` 개수 = duration/3. 합 48~60초. 권장 60초·이미지 20장(5장면×12초×4비트). 위 JSON은 장면 1만 예시. 나머지 장면도 beats 4개, 같은 하루로 행동이 이어지게. 대본은 화면 자막만. `load_script`가 카피·화풍을 검사한다.
+scenes 4~5개. 훅 + 사실 + 더 아픈 사실 + 내 돈. 장면 `duration`은 3초 배수, `beats` 개수 = duration/3. 합 48~60초. 권장 60초·이미지 20장(5장면×12초×4비트). 위 JSON은 장면 1만 예시. 나머지 장면도 beats 4개. 그림은 같은 하루로 이어지되, **각 컷은 그 3초 자막의 사실을 보여준다.** 대본은 화면 자막만. `load_script`가 카피·화풍·메시지 검사를 한다.
 
 ## 제목 (클릭·검색)
 
@@ -93,13 +93,35 @@ scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration`은 3초 배수, `beats` 
 - `tags`는 **10개 이상.** 채널명·쇼츠 단어 금지. Studio `자세히 보기 → 태그`에 그대로 넣는다.
 - 예: `#가계빚 #주담대 #영끌 #금리인상 #연체율`
 
-## 대본 (유지·조회)
+## 대본 (메시지 먼저 · 공포)
 
-- 장면1 훅: 질문이거나 덜 끝난 말. 결론을 첫 자막에 다 쏟지 말 것. 제목을 그대로 읽지 말 것.
-- 장면마다 새 정보 하나. 같은 사실 3번 반복 금지.
-- 마지막: 내 대출/이자/월급/연금에 미치는 한 줄.
+무음 3초에 **무슨 일이고 왜 위험한지**가 보여야 한다. 할머니가 골목을 걷는 영화는 실패다.
+
+한 편 = 헤드라인 사실을 정확히 + 내 돈이 위험하다는 공포. 스토리는 그림만. 자막은 뉴스.
+
+| 변명 | 실제 |
+|------|------|
+| 산책하는 하루가 감동적이다 | 숫자가 안 보이면 조회가 아니라 분위기 영상이다 |
+| 장면 4는 여운을 남긴다 | 여운 대신 월급·이자·전세가 어떻게 되는지 |
+| 같은 숫자 반복이 지루하다 | 제목 숫자는 자막에 **그대로** 남아야 한다. 각도만 바꿔라 |
+| 공포는 표정으로 | 자막의 숫자·삭감·인상으로. 얼굴 과장·`worried korean senior` 금지 |
+
+구조 (5장면 권장):
+
+1. 훅: 숫자 또는 손실을 질문. 제목 복붙 금지.
+2. 사실: 헤드라인 숫자·핵심을 쉬운 말로.
+3. 더 아픈 사실: 왜 위험한지 한 줄 (삭감·인상·몰림·한도).
+4. 비교: 월급·전세·이자로는 못 따라간다는 충격.
+5. 내 돈: 내 대출/이자/월급/연금/건보에 미치는 한 줄.
+
+규칙:
+
+- 제목에 있는 숫자는 자막 어딘가에 **그대로** 나와야 한다. 헤드라인에 없는 숫자는 만들지 마라.
+- 장면마다 새 정보 하나. 같은 문장을 3번 읽지 말 것.
+- 자막에 산책·창밖·골목·불빛·벤치 정서 금지 (`걸어가요` `올려다봐요` `불빛만` `창밖`).
 - 면책 장면 금지. 면책은 설명에만.
 - `used-topics.json`과 같은 훅·같은 각도 금지.
+- 매수/매도/추천 금지. 공포는 “지금 사”가 아니라 “내 부담이 커진다”.
 
 ## 문체 (AI 티 빼기)
 
@@ -111,7 +133,8 @@ scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration`은 3초 배수, `beats` 
 ## 자막
 
 - 장면당 `captions` 2개 이상. 한 줄 28자 이하.
-- 무음으로 3초 안에 뜻을 알게. 뉴스 용어는 쉬운 말로.
+- 한 줄 = 사실 하나 또는 공포 하나. 분위기 문장 금지.
+- 무음으로 3초 안에 숫자·위험이 보이게. 뉴스 용어는 쉬운 말로.
 - 숫자·핵심어만 색/굵기. 키네틱 금지.
 
 ## 화면 (3초 정지 컷)
@@ -123,7 +146,8 @@ scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration`은 3초 배수, `beats` 
 **한 쇼츠 = 한 `style.anchor` + 한 `style.face` + 한 `style.wardrobe`.** 모든 beat `image_prompt`에 세 문장과 `exactly two hands and two feet, no extra limbs`를 그대로 넣는다.
 
 이어짐:
-- 20장은 같은 하루의 연속 컷. 비트마다 행동이 한 걸음만 바뀐다. 갑자기 다른 사람·다른 옷·다른 마을이면 다시 생성.
+- 20장은 같은 하루의 연속 컷. 비트마다 행동이 한 걸음만 바뀐다. **그 3초 자막의 사실**을 보여라 (고지서, 빈 통장, 줄 선 우산, 저울). 산책·창밖만 이어가면 메시지가 죽는다. 화면에 한글·숫자는 쓰지 말고, 숫자는 자막이 말한다.
+- 갑자기 다른 사람·다른 옷·다른 마을이면 다시 생성.
 - `style.face`에 나이·머리·이목구비를 잠근다. 예: `same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age`
 - `style.wardrobe`에 겉옷·색을 잠근다. 컷마다 옷이 바뀌면 다시 생성.
 - 손·발·팔이 같은 방향에 두 개·세 개면 버린다. 프롬프트에 해부 고정 문장을 빼지 마라.

@@ -256,6 +256,29 @@ class CopyValidateTests(unittest.TestCase):
     def test_studio_title_strips_hash(self):
         self.assertEqual(studio_title("가계빚 2000조 #Shorts"), "가계빚 2000조")
 
+    def test_rejects_story_mood_caption(self):
+        scenes = _ok().scenes
+        scenes[3].captions = ["청약통장만 들고 걸어가요", "아파트 불빛만 올려다봐요"]
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(scenes=scenes))
+        self.assertIn("스토리", str(ctx.exception))
+
+    def test_rejects_title_number_missing_from_captions(self):
+        scenes = _ok().scenes
+        scenes[0].captions = ["이자가 더 붙는다고요?", "가계빚이 또 늘었어요"]
+        scenes[3].captions = ["금리 오르면 이자만", "부담이 더 커져요"]
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(scenes=scenes))
+        self.assertIn("제목 숫자", str(ctx.exception))
+
+    def test_rejects_scene_without_fact_or_fear(self):
+        scenes = _ok().scenes
+        scenes[2].captions = ["골목으로 내려가요", "창가에 잠시 서 있어요"]
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(scenes=scenes))
+        msg = str(ctx.exception)
+        self.assertTrue("스토리" in msg or "사실" in msg or "공포" in msg)
+
 
 if __name__ == "__main__":
     unittest.main()

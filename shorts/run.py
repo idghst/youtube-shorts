@@ -14,7 +14,6 @@ from shorts.config import (
     load_config,
     youtube_channel_id,
 )
-from shorts.copy import studio_hashtags, studio_tags, studio_title
 from shorts.models import beat_media_path, load_headline, load_script, thumb_media_path
 from shorts.news import pick_job
 from shorts.render import render_job, require_ffmpeg
@@ -131,25 +130,15 @@ def cmd_render(dir_arg: str | None) -> Path:
     return video
 
 
-def studio_meta(script, cfg: dict) -> dict:
-    from shorts.upload import description_with_disclaimer
-
-    desc = description_with_disclaimer(script, cfg.get("disclaimer") or "")
-    return {
-        "title": studio_title(script.title),
-        "description": desc,
-        "hashtags": studio_hashtags(script),
-        "tags": studio_tags(script),
-    }
-
-
 def cmd_meta(dir_arg: str | None) -> dict:
+    from shorts.upload import studio_meta
+
     cfg = load_config()
     job = resolve_job(dir_arg, cfg, pick_if_needed=False)
     if not (job / "script.json").is_file():
         raise SystemExit("script.json 없음: %s" % job)
     script = load_script(job / "script.json")
-    meta = studio_meta(script, cfg)
+    meta = studio_meta(script, cfg.get("disclaimer") or "")
     print(json.dumps(meta, ensure_ascii=False, indent=2))
     return meta
 
