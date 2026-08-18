@@ -4,7 +4,6 @@ import logging
 import re
 import shutil
 import subprocess
-import textwrap
 from pathlib import Path
 
 from shorts.config import ROOT
@@ -131,38 +130,88 @@ def _line_width(draw, line: str, font) -> tuple[int, int]:
     return w, h
 
 
+def _wrap_caption_lines(text: str, draw, font, max_width: int) -> list[str]:
+    cleaned = " ".join(text.replace("\n", " ").split())
+    if not cleaned:
+        return [""]
+    width, _ = _line_width(draw, cleaned, font)
+    if width <= max_width:
+        return [cleaned]
+    words = cleaned.split(" ")
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        trial = word if not current else current + " " + word
+        trial_w, _ = _line_width(draw, trial, font)
+        if trial_w <= max_width:
+            current = trial
+            continue
+        if current:
+            lines.append(current)
+        if len(lines) >= 2:
+            break
+        current = word
+    if current and len(lines) < 2:
+        lines.append(current)
+    return lines[:2] or [cleaned]
+
+
+def _ink_bbox(img) -> tuple[int, int, int, int] | None:
+    px = img.load()
+    w, h = img.size
+    min_x, min_y, max_x, max_y = w, h, -1, -1
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a > 20 and r + g + b > 80:
+                if x < min_x:
+                    min_x = x
+                if y < min_y:
+                    min_y = y
+                if x > max_x:
+                    max_x = x
+                if y > max_y:
+                    max_y = y
+    if max_x < 0:
+        return None
+    return min_x, min_y, max_x + 1, max_y + 1
+
+
 def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
     from PIL import Image, ImageDraw
 
-    lines = textwrap.wrap(text.replace("\n", " "), width=12) or [text]
-    lines = lines[:2]
-    font = _caption_font(76)
+    font = _caption_font(78)
     probe = Image.new("RGBA", (width, 10), (0, 0, 0, 0))
     draw = ImageDraw.Draw(probe)
+    lines = _wrap_caption_lines(text, draw, font, width - 80)
     sizes = [_line_width(draw, line, font) for line in lines]
-    gap = 10
-    text_w = max(w for w, _h in sizes)
+    gap = 8
     text_h = sum(h for _w, h in sizes) + gap * (len(lines) - 1)
-    pad_x, pad_y = 36, 22
-    box_w = min(width - 96, text_w + pad_x * 2)
-    box_h = text_h + pad_y * 2
-    img_h = box_h + 16
-    img = Image.new("RGBA", (width, img_h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    x0 = (width - box_w) // 2
-    y0 = 8
-    draw.rounded_rectangle((x0, y0, x0 + box_w, y0 + box_h), radius=20, fill=(0, 0, 0, 200))
-    y = y0 + pad_y
+    scratch = Image.new("RGBA", (width, max(text_h + 80, 160)), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(scratch)
+    y = 20
     for line, (_lw, lh) in zip(lines, sizes):
         tokens = [p for p in KEYWORD_RE.split(line) if p] or [line]
         tw, _ = _line_width(draw, line, font)
         x = (width - tw) // 2
         for tok in tokens:
             fill = GOLD if KEYWORD_RE.fullmatch(tok) else WHITE
-            draw.text((x, y), tok, font=font, fill=fill, stroke_width=5, stroke_fill=(0, 0, 0, 240))
-            bbox = draw.textbbox((x, y), tok, font=font, stroke_width=5)
+            draw.text((x, y), tok, font=font, fill=fill, stroke_width=4, stroke_fill=(0, 0, 0, 255))
+            bbox = draw.textbbox((x, y), tok, font=font, stroke_width=4)
             x = bbox[2]
         y += lh + gap
+    ink = _ink_bbox(scratch)
+    pad_y = 30
+    if ink is None:
+        box_h = max(text_h + pad_y * 2, 120)
+        img = Image.new("RGBA", (width, box_h), (0, 0, 0, 255))
+        img.save(path)
+        return
+    ix0, iy0, ix1, iy1 = ink
+    crop = scratch.crop((0, iy0, width, iy1))
+    box_h = max(crop.size[1] + pad_y * 2, 120)
+    img = Image.new("RGBA", (width, box_h), (0, 0, 0, 255))
+    img.alpha_composite(crop, (0, (box_h - crop.size[1]) // 2))
     img.save(path)
 
 
@@ -280,7 +329,7 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
                     "-i",
                     str(cap),
                     "-filter_complex",
-                    "overlay=(W-w)/2:H-h-300",
+                    "overlay=0:H*2/3-h/2",
                     "-c:v",
                     "libx264",
                     "-pix_fmt",
