@@ -131,38 +131,47 @@ def _line_width(draw, line: str, font) -> tuple[int, int]:
     return w, h
 
 
+def _caption_lines(text: str, draw, font, max_width: int) -> list[str]:
+    raw = " ".join((text or "").split())
+    if not raw:
+        return [""]
+    width, _ = _line_width(draw, raw, font)
+    if width <= max_width:
+        return [raw]
+    wrapped = textwrap.wrap(raw, width=12) or [raw]
+    return wrapped[:2]
+
+
 def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
     from PIL import Image, ImageDraw
 
-    lines = textwrap.wrap(text.replace("\n", " "), width=12) or [text]
-    lines = lines[:2]
-    font = _caption_font(76)
+    font = _caption_font(80)
     probe = Image.new("RGBA", (width, 10), (0, 0, 0, 0))
     draw = ImageDraw.Draw(probe)
-    sizes = [_line_width(draw, line, font) for line in lines]
-    gap = 10
-    text_w = max(w for w, _h in sizes)
-    text_h = sum(h for _w, h in sizes) + gap * (len(lines) - 1)
-    pad_x, pad_y = 36, 22
-    box_w = min(width - 96, text_w + pad_x * 2)
-    box_h = text_h + pad_y * 2
-    img_h = box_h + 16
-    img = Image.new("RGBA", (width, img_h), (0, 0, 0, 0))
+    max_text_w = width - 72
+    lines = _caption_lines(text, draw, font, max_text_w)
+    inks = []
+    for line in lines:
+        bbox = draw.textbbox((0, 0), line, font=font, stroke_width=5)
+        inks.append((bbox[2] - bbox[0], bbox[3] - bbox[1], bbox[0], bbox[1]))
+    gap = 8
+    text_h = sum(h for _w, h, _x0, _y0 in inks) + gap * (len(inks) - 1)
+    pad_y = 30
+    box_h = max(text_h + pad_y * 2, 110)
+    img = Image.new("RGBA", (width, box_h), (0, 0, 0, 235))
     draw = ImageDraw.Draw(img)
-    x0 = (width - box_w) // 2
-    y0 = 8
-    draw.rounded_rectangle((x0, y0, x0 + box_w, y0 + box_h), radius=20, fill=(0, 0, 0, 200))
-    y = y0 + pad_y
-    for line, (_lw, lh) in zip(lines, sizes):
+    y = (box_h - text_h) // 2
+    for line, (ink_w, ink_h, ink_x0, ink_y0) in zip(lines, inks):
         tokens = [p for p in KEYWORD_RE.split(line) if p] or [line]
         tw, _ = _line_width(draw, line, font)
         x = (width - tw) // 2
+        draw_y = y - ink_y0
         for tok in tokens:
             fill = GOLD if KEYWORD_RE.fullmatch(tok) else WHITE
-            draw.text((x, y), tok, font=font, fill=fill, stroke_width=5, stroke_fill=(0, 0, 0, 240))
-            bbox = draw.textbbox((x, y), tok, font=font, stroke_width=5)
+            draw.text((x, draw_y), tok, font=font, fill=fill, stroke_width=5, stroke_fill=(0, 0, 0, 240))
+            bbox = draw.textbbox((x, draw_y), tok, font=font, stroke_width=5)
             x = bbox[2]
-        y += lh + gap
+        y += ink_h + gap
     img.save(path)
 
 
@@ -280,7 +289,7 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
                     "-i",
                     str(cap),
                     "-filter_complex",
-                    "overlay=(W-w)/2:H-h-300",
+                    "overlay=0:H*2/3-h/2",
                     "-c:v",
                     "libx264",
                     "-pix_fmt",
