@@ -4,7 +4,6 @@ import logging
 import re
 import shutil
 import subprocess
-import textwrap
 from pathlib import Path
 
 from shorts.config import ROOT
@@ -27,6 +26,10 @@ KEYWORD_RE = re.compile(
 )
 GOLD = (255, 213, 74, 255)
 WHITE = (255, 255, 255, 255)
+CAPTION_OVERLAY = "overlay=0:H*2/3-h/2"
+CAPTION_MAX_WIDTH_PAD = 80
+CAPTION_PAD_Y = 28
+CAPTION_LINE_GAP = 8
 
 
 def require_ffmpeg() -> str:
@@ -131,28 +134,46 @@ def _line_width(draw, line: str, font) -> tuple[int, int]:
     return w, h
 
 
-def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
+def wrap_caption(text: str, width: int = 1080) -> list[str]:
     from PIL import Image, ImageDraw
 
-    lines = textwrap.wrap(text.replace("\n", " "), width=12) or [text]
-    lines = lines[:2]
+    raw = (text or "").replace("\n", " ").strip() or " "
     font = _caption_font(76)
     probe = Image.new("RGBA", (width, 10), (0, 0, 0, 0))
     draw = ImageDraw.Draw(probe)
+    max_w = max(width - CAPTION_MAX_WIDTH_PAD, 200)
+    if _line_width(draw, raw, font)[0] <= max_w:
+        return [raw]
+    lines: list[str] = []
+    rest = raw
+    while rest and len(lines) < 2:
+        lo, hi = 1, len(rest)
+        best = 1
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            if _line_width(draw, rest[:mid], font)[0] <= max_w:
+                best = mid
+                lo = mid + 1
+            else:
+                hi = mid - 1
+        chunk = rest[:best].rstrip() or rest[:best]
+        rest = rest[len(chunk) :].lstrip()
+        if len(lines) == 1 and rest:
+            chunk = (chunk + rest).strip()
+            rest = ""
+        lines.append(chunk)
+    return lines or [raw]
+
+
+def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
+    from PIL import Image, ImageDraw
+
+    lines = wrap_caption(text, width=width)
+    font = _caption_font(76)
+    canvas = Image.new("RGBA", (width, 420), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(canvas)
     sizes = [_line_width(draw, line, font) for line in lines]
-    gap = 10
-    text_w = max(w for w, _h in sizes)
-    text_h = sum(h for _w, h in sizes) + gap * (len(lines) - 1)
-    pad_x, pad_y = 36, 22
-    box_w = min(width - 96, text_w + pad_x * 2)
-    box_h = text_h + pad_y * 2
-    img_h = box_h + 16
-    img = Image.new("RGBA", (width, img_h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    x0 = (width - box_w) // 2
-    y0 = 8
-    draw.rounded_rectangle((x0, y0, x0 + box_w, y0 + box_h), radius=20, fill=(0, 0, 0, 200))
-    y = y0 + pad_y
+    y = 40
     for line, (_lw, lh) in zip(lines, sizes):
         tokens = [p for p in KEYWORD_RE.split(line) if p] or [line]
         tw, _ = _line_width(draw, line, font)
@@ -162,8 +183,17 @@ def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
             draw.text((x, y), tok, font=font, fill=fill, stroke_width=5, stroke_fill=(0, 0, 0, 240))
             bbox = draw.textbbox((x, y), tok, font=font, stroke_width=5)
             x = bbox[2]
-        y += lh + gap
-    img.save(path)
+        y += lh + CAPTION_LINE_GAP
+    ink_box = canvas.getbbox()
+    if ink_box is None:
+        bar = Image.new("RGBA", (width, 96), (0, 0, 0, 255))
+        bar.save(path)
+        return
+    ink = canvas.crop(ink_box)
+    bar_h = ink.size[1] + CAPTION_PAD_Y * 2
+    bar = Image.new("RGBA", (width, bar_h), (0, 0, 0, 255))
+    bar.paste(ink, ((width - ink.size[0]) // 2, CAPTION_PAD_Y), ink)
+    bar.save(path)
 
 
 def _ken_burns(ffmpeg: str, image: Path, dest: Path, seconds: float, fps: int, w: int, h: int) -> None:
@@ -280,7 +310,7 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
                     "-i",
                     str(cap),
                     "-filter_complex",
-                    "overlay=(W-w)/2:H-h-300",
+                    CAPTION_OVERLAY,
                     "-c:v",
                     "libx264",
                     "-pix_fmt",
