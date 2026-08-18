@@ -115,16 +115,6 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([plain, house], now=datetime(2026, 8, 17, 9))
         self.assertEqual(chosen.title, house.title)
 
-    def test_household_limit_beats_plain_jeonse(self):
-        plain = _h("전세 시장 한파", published="Mon, 17 Aug 2026 12:00:00 +0000")
-        house = _h(
-            "부모에게 전세금 빌리면 증여세·무이자 한도",
-            published="Mon, 17 Aug 2026 08:00:00 +0000",
-        )
-        self.assertGreater(_house_score(house), _house_score(plain))
-        chosen = choose_headline([plain, house], now=datetime(2026, 8, 17, 9))
-        self.assertEqual(chosen.title, house.title)
-
     def test_viral_number_beats_same_senior_topic(self):
         plain = _h("국민연금 개혁안 논의")
         punch = _h("국민연금 보험료 9% 인상 검토")

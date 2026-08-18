@@ -23,15 +23,15 @@ description: Makes one Korean finance YouTube Short from RSS via local CLI plus 
 
 저장소 루트에서. 이 순서를 건너뛰거나 한 파일에 대충 몰아 쓰지 말 것.
 
-1. **이전 주제** + **주제 선정**: `.venv/bin/python -m shorts pick --channel 돈이웃` → stdout이 잡 폴더. 시니어 관심(연금·노후·건보·상속·예적금·부동산) 우선. 숫자·삭감·인상 같은 훅이 있으면 더 앞. “쓸 헤드라인 없음”이면 중단.
+1. **이전 주제** + **주제 선정**: `.venv/bin/python -m shorts pick --channel 돈이웃` → stdout이 잡 폴더. 시니어 관심(연금·노후·건보·상속·예적금·부동산) 우선. 전세·부모·증여·차용·한도가 있으면 더 앞. 숫자·삭감·인상 훅이 있으면 그다음. “쓸 헤드라인 없음”이면 중단.
 2. **이 쇼츠의 화풍 하나**: `style.anchor`·`style.face`·`style.wardrobe`를 먼저 고정한다. 쇼츠마다 달라도 된다. **한 쇼츠 안 컷은 같은 얼굴·나이·옷·마을·빛이어야 한다.**
 3. **대본**: `headline.json`과 `used-topics.json`을 보고 `script.json`의 `scenes`만 먼저 쓴다. **자막이 뉴스다.** 그림만 이어지고, 자막은 숫자·삭감·인상·내 돈 공포. 산책·창밖 정서는 자막에 쓰지 마라. OpenAI/Gemini HTTP 금지. 이전 제목과 같은 각도·같은 훅 금지.
-4. **제목**: 대본을 본 뒤에 `title`. 대본 첫 줄을 옮기지 말 것. 숫자 또는 물음표 필수.
+4. **제목**: 대본을 본 뒤에 `title`. 대본 첫 줄을 옮기지 말 것. 내 돈 상황 + 숫자 필수.
 5. **설명**: 제목 다음에 `description` 본문만.
 6. **해시태그**: `hashtags`와 `tags`. 그다음 `script.json`을 저장.
 7. **이미지**: 아래 **화면** 절로 비트마다 프롬프트를 쓴 뒤, Cursor **GenerateImage** (`aspect_ratio: 9:16`) → `beat-01.png` …. 3초당 1장. 60초면 20장. 직전 컷(+ beat-01)을 레퍼런스로 얼굴·옷을 고정. 실사 사람·망가체 금지. 동영상 클립·imagegen CLI / OPENAI_API_KEY 폴백 금지.
 8. **썸네일**: 아래 **썸네일** 절로 GenerateImage `aspect_ratio: 16:9` → `thumb.png`. 업로드 때 Studio에 반드시 올린다.
-9. **영상**: `.venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>` → `video.mp4`. duration은 3초 배수, 합 48~60초(권장 60초/20장). 성공 시 `rendered`.
+9. **영상**: `.venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>` → `video.mp4`. duration은 3초 배수, 합 48~60초(권장 48초/16장). 성공 시 `rendered`.
 10. **업로드**: 사용자가 `올려줘`/`업로드` 할 때, 또는 시간별 자동화일 때. **REQUIRED:** `.cursor/skills/shorts-upload/SKILL.md`. 먼저 `.venv/bin/python -m shorts meta --dir <잡폴더>`. Studio에서 제목·설명 다음에 **`자세히`를 누르고 아래로 스크롤**해서 해시태그 칸에 `meta.hashtags`를 넣는다. 설명의 `#`만으로 대체하지 마라. 태그 칸에는 `meta.tags`. 해시태그 칸이 비면 `다음` 금지.
 11. **기록**: Studio로 올렸으면 `.venv/bin/python -m shorts record --dir out/<channel>/<job> --status uploaded --video-id <id>`.
 
@@ -119,7 +119,7 @@ scenes 4~5개. 훅 + 사실 + 더 아픈 사실 + 내 돈. 장면 `duration`은 
 
 규칙:
 
-- 제목에 있는 숫자는 자막 어딘가에 **그대로** 나와야 한다. 헤드라인에 없는 숫자는 만들지 마라.
+- 제목에 있는 숫자는 **첫 자막에 그대로** 나와야 한다. 헤드라인에 없는 숫자는 만들지 마라.
 - 장면마다 새 정보 하나. 같은 문장을 3번 읽지 말 것.
 - 자막에 산책·창밖·골목·불빛·벤치 정서 금지 (`걸어가요` `올려다봐요` `불빛만` `창밖`).
 - 면책 장면 금지. 면책은 설명에만.
@@ -142,7 +142,7 @@ scenes 4~5개. 훅 + 사실 + 더 아픈 사실 + 내 돈. 장면 `duration`은 
 
 ## 화면 (3초 정지 컷)
 
-동영상 클립은 만들지 않는다. **음악 3초마다 이미지가 바뀐다.** Cursor **GenerateImage** `aspect_ratio: 9:16` → `beat-01.png` … `beat-20.png`. 60초면 20장.
+동영상 클립은 만들지 않는다. **음악 3초마다 이미지가 바뀐다.** Cursor **GenerateImage** `aspect_ratio: 9:16` → `beat-01.png` … . 권장 48초/16장. 60초는 이탈이 크면 쓰지 마라.
 
 실사 사람 금지. 망가/만화잡지/치비/효과선 금지. 프롬프트에 manga, photoreal, zoom 단어를 넣지 말 것. 디즈니·지브리·신카이 장편 **느낌**. 특정 저작권 캐릭터 금지.
 
