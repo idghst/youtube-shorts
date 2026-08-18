@@ -8,7 +8,7 @@ import textwrap
 from pathlib import Path
 
 from shorts.config import ROOT
-from shorts.models import Script, Scene, scene_image_path
+from shorts.models import Script, Scene, scene_media_path
 
 log = logging.getLogger("shorts")
 FONT = "/System/Library/Fonts/AppleSDGothicNeo.ttc"
@@ -23,10 +23,13 @@ LINUX_FONTS = (
     "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
 )
 KEYWORD_RE = re.compile(
-    r"(\d+(?:\.\d+)?(?:조|억|만|%|퍼센트|년)?|영끌|빚투|주택담보대출|주담대|금리|연체율|가계빚|가계부채|총량)"
+    r"(\d+(?:\.\d+)?(?:조|억|만|%|퍼센트|년)?|영끌|빚투|주택담보대출|주담대|금리|연체율|가계빚|가계부채|총량|집값|전세|월세|전월세)"
 )
 GOLD = (255, 213, 74, 255)
 WHITE = (255, 255, 255, 255)
+CAPTION_OVERLAY = "overlay=(W-w)/2:H*2/3-h/2"
+# TTC: Bold/ExtraBold first. Regular/Thin last — thin faces sit low in the box.
+_FONT_INDEX = (6, 7, 5, 4, 3, 1, 2, 0)
 
 
 def require_ffmpeg() -> str:
@@ -105,7 +108,7 @@ def _caption_font(size: int):
     for candidate in (FONT, FONT_FALLBACK, *LINUX_FONTS):
         if not Path(candidate).is_file():
             continue
-        for index in (1, 2, 0):
+        for index in _FONT_INDEX:
             try:
                 return ImageFont.truetype(candidate, size, index=index)
             except OSError:
@@ -136,64 +139,63 @@ def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
 
     lines = textwrap.wrap(text.replace("\n", " "), width=12) or [text]
     lines = lines[:2]
-    font = _caption_font(76)
+    font = _caption_font(82)
     probe = Image.new("RGBA", (width, 10), (0, 0, 0, 0))
     draw = ImageDraw.Draw(probe)
-    sizes = [_line_width(draw, line, font) for line in lines]
-    gap = 10
-    text_w = max(w for w, _h in sizes)
-    text_h = sum(h for _w, h in sizes) + gap * (len(lines) - 1)
-    pad_x, pad_y = 36, 22
-    box_w = min(width - 96, text_w + pad_x * 2)
+    gap = 8
+    bboxes = [draw.textbbox((0, 0), line, font=font, stroke_width=5) for line in lines]
+    vis_h = [b[3] - b[1] for b in bboxes]
+    text_h = sum(vis_h) + gap * (len(lines) - 1)
+    pad_y = 28
     box_h = text_h + pad_y * 2
-    img_h = box_h + 16
-    img = Image.new("RGBA", (width, img_h), (0, 0, 0, 0))
+    img = Image.new("RGBA", (width, box_h), (0, 0, 0, 235))
     draw = ImageDraw.Draw(img)
-    x0 = (width - box_w) // 2
-    y0 = 8
-    draw.rounded_rectangle((x0, y0, x0 + box_w, y0 + box_h), radius=20, fill=(0, 0, 0, 200))
-    y = y0 + pad_y
-    for line, (_lw, lh) in zip(lines, sizes):
+    y = (box_h - text_h) // 2
+    for line, bbox, lh in zip(lines, bboxes, vis_h):
         tokens = [p for p in KEYWORD_RE.split(line) if p] or [line]
         tw, _ = _line_width(draw, line, font)
         x = (width - tw) // 2
+        draw_y = y - bbox[1]
         for tok in tokens:
             fill = GOLD if KEYWORD_RE.fullmatch(tok) else WHITE
-            draw.text((x, y), tok, font=font, fill=fill, stroke_width=5, stroke_fill=(0, 0, 0, 240))
-            bbox = draw.textbbox((x, y), tok, font=font, stroke_width=5)
-            x = bbox[2]
+            draw.text(
+                (x, draw_y),
+                tok,
+                font=font,
+                fill=fill,
+                stroke_width=5,
+                stroke_fill=(0, 0, 0, 240),
+            )
+            tok_box = draw.textbbox((x, draw_y), tok, font=font, stroke_width=5)
+            x = tok_box[2]
         y += lh + gap
     img.save(path)
 
 
-def _ken_burns(ffmpeg: str, image: Path, dest: Path, seconds: float, fps: int, w: int, h: int) -> None:
-    frames = max(int(round(seconds * fps)), fps)
-    vf = (
-        "scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,"
-        "zoompan=z='min(zoom+0.0012,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
-        ":d=%d:s=%dx%d:fps=%d"
-        % (w + 80, h + 140, w + 80, h + 140, frames, w, h, fps)
-    )
-    _run(
-        [
-            ffmpeg,
-            "-y",
-            "-loop",
-            "1",
-            "-i",
-            str(image),
-            "-vf",
-            vf,
-            "-t",
-            "%.3f" % seconds,
-            "-r",
-            str(fps),
-            "-pix_fmt",
-            "yuv420p",
-            "-an",
-            str(dest),
-        ]
-    )
+def fit_vf(w: int, h: int) -> str:
+    return "scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d" % (w, h, w, h)
+
+
+def _fit_clip(ffmpeg: str, src: Path, dest: Path, seconds: float, fps: int, w: int, h: int) -> None:
+    still = src.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
+    cmd = [ffmpeg, "-y"]
+    if still:
+        cmd += ["-loop", "1"]
+    cmd += [
+        "-i",
+        str(src),
+        "-vf",
+        fit_vf(w, h),
+        "-t",
+        "%.3f" % seconds,
+        "-r",
+        str(fps),
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        str(dest),
+    ]
+    _run(cmd)
 
 
 def _mix_bgm(ffmpeg: str, silent: Path, bgm: Path, dest: Path, duration: float, volume: float) -> None:
@@ -235,22 +237,22 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
     height = int(cfg.get("height") or 1920)
     fps = int(cfg.get("fps") or 30)
     duration = script.total_duration()
-    if not (50 <= duration <= 60):
-        raise SystemExit("장면 duration 합은 50~60초 (지금 %.1f)" % duration)
+    if not (20 <= duration <= 50):
+        raise SystemExit("장면 duration 합은 20~50초 (지금 %.1f)" % duration)
     bgm = resolve_bgm(cfg)
     volume = float(cfg.get("bgm_volume") or 0.32)
 
     missing = []
-    images = []
+    media = []
     for i, _scene in enumerate(script.scenes, 1):
-        image = scene_image_path(job_dir, i)
-        if not image.is_file():
-            missing.append(image.name)
+        path = scene_media_path(job_dir, i)
+        if path is None:
+            missing.append("scene-%02d.mp4|png" % i)
         else:
-            images.append(image)
+            media.append(path)
     if missing:
         raise SystemExit(
-            "장면 이미지 없음: %s. Cursor GenerateImage 로 scene-01.png … 를 이 폴더에 넣어라."
+            "장면 클립 없음: %s. scene-01.mp4(5~10초) 또는 scene-01.png 를 넣어라. 줌 확대는 쓰지 않음."
             % ", ".join(missing)
         )
 
@@ -259,9 +261,9 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
         shutil.rmtree(work)
     work.mkdir()
     clips = []
-    for i, (image, scene) in enumerate(zip(images, script.scenes), 1):
+    for i, (src, scene) in enumerate(zip(media, script.scenes), 1):
         raw = work / ("clip-%02d-raw.mp4" % i)
-        _ken_burns(ffmpeg, image, raw, scene.duration, fps, width, height)
+        _fit_clip(ffmpeg, src, raw, scene.duration, fps, width, height)
         elapsed = 0.0
         for j, (text, beat_dur) in enumerate(caption_beats(scene), 1):
             cap = work / ("cap-%02d-%02d.png" % (i, j))
@@ -280,7 +282,7 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
                     "-i",
                     str(cap),
                     "-filter_complex",
-                    "overlay=(W-w)/2:H-h-300",
+                    CAPTION_OVERLAY,
                     "-c:v",
                     "libx264",
                     "-pix_fmt",

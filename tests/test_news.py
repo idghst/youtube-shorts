@@ -104,6 +104,12 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([similar, other], now=datetime(2026, 8, 17, 9), used_titles=used)
         self.assertEqual(chosen.title, other.title)
 
+    def test_viral_number_beats_same_senior_topic(self):
+        plain = _h("국민연금 개혁안 논의")
+        punch = _h("국민연금 보험료 9% 인상 검토")
+        chosen = choose_headline([plain, punch], now=datetime(2026, 8, 17, 9))
+        self.assertEqual(chosen.title, punch.title)
+
 
 if __name__ == "__main__":
     unittest.main()

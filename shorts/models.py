@@ -31,6 +31,18 @@ class Headline:
 
 
 @dataclass
+class Style:
+    anchor: str
+    mood: str = ""
+
+    def to_json(self) -> dict:
+        data = {"anchor": self.anchor}
+        if self.mood:
+            data["mood"] = self.mood
+        return data
+
+
+@dataclass
 class Scene:
     text: str
     image_prompt: str
@@ -45,6 +57,7 @@ class Script:
     tags: list = field(default_factory=list)
     hashtags: str = ""
     scenes: list = field(default_factory=list)
+    style: Style | None = None
 
     def total_duration(self) -> float:
         return sum(s.duration for s in self.scenes)
@@ -68,6 +81,8 @@ class Script:
         }
         if self.hashtags:
             data["hashtags"] = self.hashtags
+        if self.style and self.style.anchor:
+            data["style"] = self.style.to_json()
         return data
 
 
@@ -91,6 +106,8 @@ def load_script(path: Path) -> Script:
             raise ValueError("scenes[%d] duration 은 0보다 커야 함" % i)
         if not text or not prompt:
             raise ValueError("scenes[%d] 에 text/image_prompt 필요" % i)
+        if not (5 <= duration <= 10):
+            raise ValueError("scenes[%d] duration 은 5~10초" % i)
         raw_caps = raw.get("captions") or []
         if raw_caps and not isinstance(raw_caps, list):
             raise ValueError("scenes[%d] captions 는 배열" % i)
@@ -104,8 +121,15 @@ def load_script(path: Path) -> Script:
     if not (4 <= len(scenes) <= 5):
         raise ValueError("scenes 는 4~5개")
     total = sum(s.duration for s in scenes)
-    if not (50 <= total <= 60):
-        raise ValueError("장면 duration 합은 50~60초 (지금 %.1f)" % total)
+    if not (20 <= total <= 50):
+        raise ValueError("장면 duration 합은 20~50초 (지금 %.1f)" % total)
+    raw_style = data.get("style") or {}
+    if raw_style and not isinstance(raw_style, dict):
+        raise ValueError("style 은 객체")
+    style = Style(
+        anchor=str((raw_style or {}).get("anchor") or "").strip(),
+        mood=str((raw_style or {}).get("mood") or "").strip(),
+    )
     tags = [str(t).strip() for t in (data.get("tags") or []) if str(t).strip()]
     script = Script(
         title=title,
@@ -113,6 +137,7 @@ def load_script(path: Path) -> Script:
         tags=tags,
         hashtags=str(data.get("hashtags") or "").strip(),
         scenes=scenes,
+        style=style,
     )
     from shorts.copy import validate_script
 
@@ -122,6 +147,14 @@ def load_script(path: Path) -> Script:
 
 def scene_image_path(job_dir: Path, index: int) -> Path:
     return job_dir / ("scene-%02d.png" % index)
+
+
+def scene_media_path(job_dir: Path, index: int) -> Path | None:
+    for suffix in (".mp4", ".webm", ".mov", ".png", ".jpg", ".jpeg", ".webp"):
+        path = job_dir / ("scene-%02d%s" % (index, suffix))
+        if path.is_file() and path.stat().st_size > 0:
+            return path
+    return None
 
 
 def slugify(title: str, limit: int = 24) -> str:

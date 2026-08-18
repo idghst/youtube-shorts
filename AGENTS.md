@@ -26,8 +26,8 @@
 ### 파이프라인
 
 1. `.venv/bin/python -m shorts pick --channel 돈이웃` → 이전 주제 조회 후 선정, `headline.json` + `used-topics.json`
-2. 에이전트가 대본 → 제목 → 설명 → 해시태그 순으로 `script.json`을 쓰고 `GenerateImage`로 `scene-01.png` … 작성. 이미지 프롬프트는 Grok Imagine 자연어 영어 2~3문장(9:16, 하단 1/3 비움, 걱정하는 시니어(사람) 필수). OpenAI/Gemini/FAL, imagegen CLI 금지. 해요체. 습니다 연속·메타 자막 금지.
-3. `.venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>` → `video.mp4`. scenes 4~5개, duration 합 50~60초.
+2. 에이전트가 이 쇼츠의 `style.anchor`를 고정한 뒤 대본 → 제목 → 설명 → 해시태그 순으로 `script.json`을 쓴다. 장면 클립은 `scene-01.mp4`(5~10초) 우선, 없으면 `scene-01.png`. 한 쇼츠 안은 같은 인물·화풍·이어지는 스토리. 장편 애니 톤(부드러운 얼굴, 빛 번지는 하늘). 실사 사람·망가체·줌 확대 금지. OpenAI/Gemini/FAL, imagegen CLI 금지. 해요체. 첫 자막은 훅, 마지막은 내 돈.
+3. `.venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>` → `video.mp4`. scenes 4~5개, 장면 5~10초, 합 20~50초.
 4. 업로드 후 `record`로 Supabase에 남겨 다음 pick이 중복을 피한다.
 
 ### 업로드

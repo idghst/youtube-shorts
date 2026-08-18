@@ -231,6 +231,18 @@ def recent_topics(channel: str, cfg: dict | None = None, out_dir: Path | None = 
     return out
 
 
+_VIRAL = (
+    "깎", "삭감", "인상", "인하", "폭탄", "미납", "체납", "고갈",
+    "동결", "지급액", "보험료", "연금액", "폐지", "중단",
+)
+
+
+def _viral_score(headline: Headline) -> int:
+    blob = _blob(headline)
+    n = 1 if re.search(r"\d", headline.title) else 0
+    return n + _count_hints(blob, _VIRAL)
+
+
 def _too_similar(headline: Headline, used_titles: list) -> bool:
     return any(topic_overlap(headline.title, title) >= 3 for title in used_titles)
 
@@ -240,7 +252,7 @@ def choose_headline(
     now: datetime | None = None,
     used_titles: list | None = None,
 ) -> Headline:
-    """미사용 헤드라인 중 시니어 관심 → 금융 키워드 → 이전 주제와 안 겹침 → 시간대 매체 → 최신 순."""
+    """미사용 헤드라인 중 시니어 관심 → 숫자/손실 훅 → 금융 키워드 → 이전 주제와 안 겹침 → 시간대 매체 → 최신 순."""
     if not unused:
         raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
     prefer = _preferred_sources(now)
@@ -255,6 +267,7 @@ def choose_headline(
         overlap = max((topic_overlap(item.title, t) for t in used), default=0)
         return (
             _senior_score(item),
+            _viral_score(item),
             _finance_score(item),
             -overlap,
             _source_boost(item, prefer),
@@ -263,8 +276,9 @@ def choose_headline(
 
     chosen = max(pool, key=sort_key)
     log.info(
-        "선정 점수 senior=%d finance=%d overlap=%d [%s] %s",
+        "선정 점수 senior=%d viral=%d finance=%d overlap=%d [%s] %s",
         _senior_score(chosen),
+        _viral_score(chosen),
         _finance_score(chosen),
         max((topic_overlap(chosen.title, t) for t in used), default=0),
         chosen.source,

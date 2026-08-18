@@ -14,7 +14,7 @@ from shorts.config import (
     load_config,
     youtube_channel_id,
 )
-from shorts.models import load_headline, load_script, scene_image_path
+from shorts.models import load_headline, load_script, scene_media_path
 from shorts.news import pick_job
 from shorts.render import render_job, require_ffmpeg
 from shorts.store import mark_used
@@ -76,9 +76,8 @@ def missing_agent_assets(job: Path) -> list:
         missing.append("script.json 오류: %s" % exc)
         return missing
     for i, _scene in enumerate(script.scenes, 1):
-        path = scene_image_path(job, i)
-        if not path.is_file():
-            missing.append("%s (GenerateImage)" % path.name)
+        if scene_media_path(job, i) is None:
+            missing.append("scene-%02d.mp4 또는 scene-%02d.png" % (i, i))
     return missing
 
 
@@ -176,7 +175,7 @@ def cmd_run(dir_arg: str | None, dry_run: bool, channel: str | None = None) -> N
             "need": gaps,
             "next": [
                 "에이전트가 script.json 작성 (외부 LLM API 금지)",
-                "GenerateImage 로 scene-01.png … 저장",
+                "장면 클립 scene-01.mp4(5~10초) 또는 scene-01.png. 한 쇼츠는 같은 style.anchor",
                 "python -m shorts run --dry-run --dir %s" % job,
             ],
         }
