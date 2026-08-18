@@ -16,7 +16,7 @@ from shorts.config import (
 )
 from shorts.models import load_headline, load_script, scene_image_path
 from shorts.news import pick_job
-from shorts.render import render_job, require_ffmpeg
+from shorts.render import render_job, required_beat_files, require_ffmpeg
 from shorts.store import mark_used
 
 log = logging.getLogger("shorts")
@@ -74,6 +74,13 @@ def missing_agent_assets(job: Path) -> list:
         script = load_script(job / "script.json")
     except ValueError as exc:
         missing.append("script.json 오류: %s" % exc)
+        return missing
+    beat_names = required_beat_files(script)
+    if beat_names:
+        for name in beat_names:
+            path = job / name
+            if not path.is_file():
+                missing.append("%s (GenerateImage)" % path.name)
         return missing
     for i, _scene in enumerate(script.scenes, 1):
         path = scene_image_path(job, i)

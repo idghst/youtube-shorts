@@ -32,6 +32,23 @@ BANNED = (
 GENERIC_TAGS = frozenset({"재테크", "경제", "쇼츠", "shorts", "돈이웃", "Shorts"})
 REQUIRED_TAGS = ("#돈이웃", "#쇼츠", "#shorts")
 FORMAL_END = ("입니다", "습니다", "나왔습니다", "것입니다")
+LIMB_LOCK = "exactly two hands and two feet, no extra limbs"
+PROMPT_BANNED = (
+    "manga",
+    "manhwa",
+    "chibi",
+    "screentone",
+    "speed lines",
+    "comic panel",
+    "photoreal",
+    "photograph",
+    "cinematic photo",
+    "cinematic still",
+    "smartphone photo",
+    "documentary still",
+    "shot on 35mm",
+    "worried korean senior",
+)
 _PUNCT = " \t.!?…,~"
 _HASH_LINE = re.compile(r"^(?:#\S+\s*)+$")
 
@@ -148,6 +165,36 @@ def validate_script(script) -> None:
         formal_n = sum(1 for c in captions if _ending(c) == "formal")
         if formal_n > 1:
             errors.append("습니다/입니다 자막이 %d개. 1개 이하" % formal_n)
+
+    uses_beats = any(getattr(scene, "beats", None) for scene in script.scenes)
+    if uses_beats:
+        style = getattr(script, "style", None)
+        if style is None:
+            errors.append("beats 있으면 style 필요")
+        else:
+            if len(style.anchor or "") < 24:
+                errors.append("style.anchor 24자 이상")
+            if len(style.face or "") < 24:
+                errors.append("style.face 24자 이상")
+            if len(style.wardrobe or "") < 16:
+                errors.append("style.wardrobe 16자 이상")
+            if not (style.mood or "").strip():
+                errors.append("style.mood 필요")
+        for i, scene in enumerate(script.scenes, 1):
+            if abs(scene.duration % 3) > 1e-6:
+                errors.append("scenes[%d] duration 은 3초 배수" % i)
+            expect = int(round(scene.duration / 3.0))
+            got = len(scene.beats or [])
+            if got != expect:
+                errors.append("scenes[%d] beats %d개 필요 (지금 %d)" % (i, expect, got))
+            for j, beat in enumerate(scene.beats or [], 1):
+                prompt = (beat.image_prompt or "").strip()
+                low = prompt.lower()
+                if LIMB_LOCK not in low:
+                    errors.append("scenes[%d] beats[%d] 해부 고정 문장 없음" % (i, j))
+                hit = next((word for word in PROMPT_BANNED if word in low), "")
+                if hit:
+                    errors.append("scenes[%d] beats[%d] 금지어: %s" % (i, j, hit))
 
     if errors:
         raise ValueError("script.json 카피: " + "; ".join(errors))

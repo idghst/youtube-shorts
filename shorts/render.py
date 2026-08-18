@@ -8,7 +8,7 @@ import textwrap
 from pathlib import Path
 
 from shorts.config import ROOT
-from shorts.models import Script, Scene, scene_image_path
+from shorts.models import Script, Scene, beat_image_path, scene_image_path
 
 log = logging.getLogger("shorts")
 FONT = "/System/Library/Fonts/AppleSDGothicNeo.ttc"
@@ -149,10 +149,7 @@ def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
     img_h = box_h + 16
     img = Image.new("RGBA", (width, img_h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    x0 = (width - box_w) // 2
-    y0 = 8
-    draw.rounded_rectangle((x0, y0, x0 + box_w, y0 + box_h), radius=20, fill=(0, 0, 0, 200))
-    y = y0 + pad_y
+    y = pad_y
     for line, (_lw, lh) in zip(lines, sizes):
         tokens = [p for p in KEYWORD_RE.split(line) if p] or [line]
         tw, _ = _line_width(draw, line, font)
@@ -229,6 +226,76 @@ def _mix_bgm(ffmpeg: str, silent: Path, bgm: Path, dest: Path, duration: float, 
     )
 
 
+def required_beat_files(script: Script) -> list[str]:
+    n = script.beat_count()
+    return ["beat-%02d.png" % i for i in range(1, n + 1)] if n else []
+
+
+def beat_caption_for_index(scene: Scene, beat_i: int, beat_n: int) -> str:
+    texts = [c.strip() for c in (scene.captions or []) if str(c).strip()]
+    if not texts:
+        texts = _split_captions(scene.text)
+    slot = max(beat_n / len(texts), 1)
+    return texts[min(int(beat_i // slot), len(texts) - 1)]
+
+
+def _static_still(ffmpeg: str, image: Path, dest: Path, seconds: float, fps: int, w: int, h: int) -> None:
+    _run(
+        [
+            ffmpeg,
+            "-y",
+            "-loop",
+            "1",
+            "-i",
+            str(image),
+            "-vf",
+            "scale=%d:%d" % (w, h),
+            "-t",
+            "%.3f" % seconds,
+            "-r",
+            str(fps),
+            "-pix_fmt",
+            "yuv420p",
+            "-an",
+            str(dest),
+        ]
+    )
+
+
+def _overlay_caption(
+    ffmpeg: str,
+    raw: Path,
+    cap: Path,
+    dest: Path,
+    seconds: float,
+    start: float = 0.0,
+) -> None:
+    _run(
+        [
+            ffmpeg,
+            "-y",
+            "-ss",
+            "%.3f" % start,
+            "-t",
+            "%.3f" % seconds,
+            "-i",
+            str(raw),
+            "-i",
+            str(cap),
+            "-filter_complex",
+            "overlay=(W-w)/2:H-h-220",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-an",
+            "-t",
+            "%.3f" % seconds,
+            str(dest),
+        ]
+    )
+
+
 def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
     ffmpeg = require_ffmpeg()
     width = int(cfg.get("width") or 1080)
@@ -240,59 +307,64 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
     bgm = resolve_bgm(cfg)
     volume = float(cfg.get("bgm_volume") or 0.32)
 
-    missing = []
-    images = []
-    for i, _scene in enumerate(script.scenes, 1):
-        image = scene_image_path(job_dir, i)
-        if not image.is_file():
-            missing.append(image.name)
-        else:
-            images.append(image)
-    if missing:
-        raise SystemExit(
-            "장면 이미지 없음: %s. Cursor GenerateImage 로 scene-01.png … 를 이 폴더에 넣어라."
-            % ", ".join(missing)
-        )
-
     work = job_dir / "work"
     if work.exists():
         shutil.rmtree(work)
     work.mkdir()
     clips = []
-    for i, (image, scene) in enumerate(zip(images, script.scenes), 1):
-        raw = work / ("clip-%02d-raw.mp4" % i)
-        _ken_burns(ffmpeg, image, raw, scene.duration, fps, width, height)
-        elapsed = 0.0
-        for j, (text, beat_dur) in enumerate(caption_beats(scene), 1):
-            cap = work / ("cap-%02d-%02d.png" % (i, j))
-            write_caption_png(text, cap, width=width)
-            clip = work / ("clip-%02d-%02d.mp4" % (i, j))
-            _run(
-                [
-                    ffmpeg,
-                    "-y",
-                    "-ss",
-                    "%.3f" % elapsed,
-                    "-t",
-                    "%.3f" % beat_dur,
-                    "-i",
-                    str(raw),
-                    "-i",
-                    str(cap),
-                    "-filter_complex",
-                    "overlay=(W-w)/2:H-h-300",
-                    "-c:v",
-                    "libx264",
-                    "-pix_fmt",
-                    "yuv420p",
-                    "-an",
-                    "-t",
-                    "%.3f" % beat_dur,
-                    str(clip),
-                ]
+    if script.beat_count():
+        missing = []
+        images = []
+        for name in required_beat_files(script):
+            image = job_dir / name
+            if not image.is_file():
+                missing.append(name)
+            else:
+                images.append(image)
+        if missing:
+            raise SystemExit(
+                "비트 이미지 없음: %s. Cursor GenerateImage 로 beat-01.png … 를 이 폴더에 넣어라."
+                % ", ".join(missing)
             )
-            clips.append(clip)
-            elapsed += beat_dur
+        idx = 0
+        for scene_i, scene in enumerate(script.scenes, 1):
+            n = len(scene.beats)
+            for j in range(n):
+                image = images[idx]
+                idx += 1
+                raw = work / ("clip-%02d-%02d-raw.mp4" % (scene_i, j + 1))
+                _static_still(ffmpeg, image, raw, 3.0, fps, width, height)
+                text = beat_caption_for_index(scene, j, n)
+                cap = work / ("cap-%02d-%02d.png" % (scene_i, j + 1))
+                write_caption_png(text, cap, width=width)
+                clip = work / ("clip-%02d-%02d.mp4" % (scene_i, j + 1))
+                _overlay_caption(ffmpeg, raw, cap, clip, 3.0)
+                clips.append(clip)
+    else:
+        missing = []
+        images = []
+        for i, _scene in enumerate(script.scenes, 1):
+            image = scene_image_path(job_dir, i)
+            if not image.is_file():
+                missing.append(image.name)
+            else:
+                images.append(image)
+        if missing:
+            raise SystemExit(
+                "장면 이미지 없음: %s. Cursor GenerateImage 로 scene-01.png … 를 이 폴더에 넣어라."
+                % ", ".join(missing)
+            )
+        for i, (image, scene) in enumerate(zip(images, script.scenes), 1):
+            raw = work / ("clip-%02d-raw.mp4" % i)
+            _ken_burns(ffmpeg, image, raw, scene.duration, fps, width, height)
+            elapsed = 0.0
+            for j, (text, beat_dur) in enumerate(caption_beats(scene), 1):
+                cap = work / ("cap-%02d-%02d.png" % (i, j))
+                write_caption_png(text, cap, width=width)
+                clip = work / ("clip-%02d-%02d.mp4" % (i, j))
+                _overlay_caption(ffmpeg, raw, cap, clip, beat_dur, start=elapsed)
+                clips.append(clip)
+                elapsed += beat_dur
 
     concat = work / "concat.txt"
     concat.write_text("".join("file '%s'\n" % c.resolve() for c in clips), encoding="utf-8")
