@@ -210,8 +210,35 @@ def topic_overlap(a: str, b: str) -> int:
     return len(topic_tokens(a) & topic_tokens(b))
 
 
+def _blocked_topic(headline: Headline) -> bool:
+    """이미 올린 각도·시니어 채널과 안 맞는 헤드라인을 다시 고르지 않는다."""
+    blob = _blob(headline)
+    blocked = (
+        "이사비",
+        "중개보수",
+        "특판예금",
+        "장특공제",
+        "가업상속",
+        "맞춤설계",
+        "지수연동예금",
+        "생애최초",
+        "2030",
+    )
+    if any(key in blob for key in blocked):
+        return True
+    if "관리비" in blob and "할인" in blob:
+        return True
+    if ("하이닉스" in blob or "sk하이닉스" in blob) and "소부장" in blob:
+        return True
+    if "청약" in blob and ("가구" in blob or "단지" in blob):
+        return True
+    if "취득" in blob and "보유" in blob and "양도" in blob:
+        return True
+    return False
+
+
 def recent_topics(channel: str, cfg: dict | None = None, out_dir: Path | None = None) -> list:
-    titles = list(recent_titles(channel))
+    titles = list(recent_titles(channel, cfg=cfg))
     root = Path(out_dir) / channel if out_dir else channel_dir(channel)
     if root.is_dir():
         for path in sorted(root.glob("*/headline.json"), reverse=True):
@@ -246,7 +273,8 @@ def choose_headline(
     prefer = _preferred_sources(now)
     used = [t for t in (used_titles or []) if t]
     fresh = [h for h in unused if not _too_similar(h, used)] if used else unused
-    pool_src = fresh or unused
+    open_pool = [h for h in fresh if not _blocked_topic(h)]
+    pool_src = open_pool or fresh or unused
     senior_hits = [h for h in pool_src if _senior_score(h) > 0]
     finance_hits = [h for h in pool_src if _finance_score(h) > 0]
     pool = senior_hits or finance_hits or pool_src
@@ -289,6 +317,10 @@ def pick_job(cfg: dict, channel: str = DEFAULT_CHANNEL, now: datetime | None = N
     yt_id = youtube_channel_id(cfg, channel)
     while unused:
         headline = choose_headline(unused, now=now, used_titles=used)
+        if _blocked_topic(headline) and any(not _blocked_topic(item) for item in unused):
+            log.info("차단 주제 건너뜀: %s", headline.title)
+            unused = [item for item in unused if item.hash != headline.hash]
+            continue
         job = write_job(headline, channel, used_titles=used)
         if not try_claim(
             headline,

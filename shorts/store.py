@@ -95,8 +95,32 @@ def _sqlite_titles(channel: str, path: Path) -> list:
     return titles
 
 
-def recent_titles(channel: str, path: Path = DB_PATH) -> list:
-    return _sqlite_titles(channel, path)
+def remote_recent_titles(channel: str, cfg: dict | None = None) -> list:
+    if not supabase_ready(cfg):
+        return []
+    remote = call_rpc("youtube_recent_titles", {"p_channel_key": channel}, cfg=cfg)
+    if remote is None:
+        return []
+    if not isinstance(remote, list):
+        raise SystemExit("youtube_recent_titles 응답이 배열이 아님")
+    titles = []
+    seen = set()
+    for item in remote:
+        text = str(item or "").strip()
+        if text and text not in seen:
+            seen.add(text)
+            titles.append(text)
+    return titles
+
+
+def recent_titles(channel: str, path: Path = DB_PATH, cfg: dict | None = None) -> list:
+    titles = _sqlite_titles(channel, path)
+    seen = set(titles)
+    for title in remote_recent_titles(channel, cfg=cfg):
+        if title not in seen:
+            seen.add(title)
+            titles.append(title)
+    return titles
 
 
 def _sqlite_hashes(channel: str, path: Path) -> set:
