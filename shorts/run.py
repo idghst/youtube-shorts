@@ -14,7 +14,7 @@ from shorts.config import (
     load_config,
     youtube_channel_id,
 )
-from shorts.models import load_headline, load_script, scene_media_path
+from shorts.models import load_headline, load_script, beat_media_path
 from shorts.news import pick_job
 from shorts.render import render_job, require_ffmpeg
 from shorts.store import mark_used
@@ -75,9 +75,9 @@ def missing_agent_assets(job: Path) -> list:
     except ValueError as exc:
         missing.append("script.json 오류: %s" % exc)
         return missing
-    for i, _scene in enumerate(script.scenes, 1):
-        if scene_media_path(job, i) is None:
-            missing.append("scene-%02d.png (GenerateImage)" % i)
+    for i, _beat in enumerate(script.all_beats(), 1):
+        if beat_media_path(job, i) is None:
+            missing.append("beat-%02d.png (GenerateImage)" % i)
     return missing
 
 
@@ -175,7 +175,7 @@ def cmd_run(dir_arg: str | None, dry_run: bool, channel: str | None = None) -> N
             "need": gaps,
             "next": [
                 "에이전트가 script.json 작성 (외부 LLM API 금지)",
-                "GenerateImage 로 scene-01.png … 저장. 같은 style.anchor·style.face",
+                "GenerateImage 로 beat-01.png … 저장. 3초당 1장. 같은 style.anchor·face·wardrobe",
                 "python -m shorts run --dry-run --dir %s" % job,
             ],
         }

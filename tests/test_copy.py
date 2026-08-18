@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from shorts.copy import description_body, studio_title, validate_script
-from shorts.models import Scene, Script, Style, load_script
+from shorts.models import ANATOMY_LOCK, Beat, Scene, Script, Style, load_script
 
 ANCHOR = (
     "the same silver-haired Korean woman in a cream cardigan, "
@@ -16,23 +16,67 @@ FACE = (
     "same late-60s Korean woman, silver bob to the jaw, "
     "soft eye wrinkles, round cheeks, do not change age"
 )
+WARDROBE = "same cream cardigan over ivory blouse every beat"
 
 
 def _prompt(beat: str) -> str:
     return (
-        "%s. %s. %s Soft theatrical animation. "
+        "%s. %s. %s. %s. %s Soft theatrical animation. "
         "Vertical 9:16, empty lower third."
-        % (ANCHOR, FACE, beat)
+        % (ANCHOR, FACE, WARDROBE, ANATOMY_LOCK, beat)
     )
+
+
+def _beats(*actions: str) -> list:
+    return [Beat(image_prompt=_prompt(a)) for a in actions]
+
+
+def _scene(text: str, captions: list, *actions: str) -> Scene:
+    return Scene(text, duration=3.0 * len(actions), captions=captions, beats=_beats(*actions))
 
 
 def _ok(**overrides) -> Script:
     scenes = [
-        Scene("가계빚이 2000조를 넘겼어요. 이자가 더 문제예요", _prompt("She reads an unmarked envelope by the window."), 7, ["이자가 더 붙는다고요?", "가계빚이 2000조예요"]),
-        Scene("영끌과 빚투가 밀어 올렸어요", _prompt("She sits at the table and opens the envelope."), 8, ["영끌이랑 빚투가 밀었어요", "늘분의 열 중 여덟이 주담대"]),
-        Scene("한도를 넓히면 더 늘 수 있어요", _prompt("She walks down wet dusk streets holding the letter."), 8, ["한도를 넓히면 더 늘어요", "연체는 10년 만에 최고예요"]),
-        Scene("금리가 오르면 이자만 3조가 더 붙어요", _prompt("City lights reflect on puddles as she pauses."), 7, ["금리 오르면 이자만", "3조가 더 붙어요"]),
-        Scene("빚이 월급보다 먼저 커지면 흔들려요", _prompt("She looks at the hillside town, hand on her chest."), 6, ["빚이 월급보다 먼저 컸어요", "내 이자부터 흔들려요"]),
+        _scene(
+            "가계빚이 2000조를 넘겼어요. 이자가 더 문제예요",
+            ["이자가 더 붙는다고요?", "가계빚이 2000조예요"],
+            "She reads an unmarked envelope by the window.",
+            "She turns the envelope over with both hands.",
+            "She looks out the dusk window, envelope at her chest.",
+            "She steps back from the window, still holding the letter.",
+        ),
+        _scene(
+            "영끌과 빚투가 밀어 올렸어요",
+            ["영끌이랑 빚투가 밀었어요", "늘분의 열 중 여덟이 주담대"],
+            "She sits at the wooden table with the envelope.",
+            "She opens the envelope with two hands.",
+            "She reads the letter under the lamp.",
+            "She sets the letter down, both hands on the table.",
+        ),
+        _scene(
+            "한도를 넓히면 더 늘 수 있어요",
+            ["한도를 넓히면 더 늘어요", "연체는 10년 만에 최고예요"],
+            "She puts on the same cream cardigan at the door.",
+            "She walks down wet dusk streets holding the letter.",
+            "She pauses under a streetlamp, letter in one hand.",
+            "She looks at glowing shop windows in the same clothes.",
+        ),
+        _scene(
+            "금리가 오르면 이자만 3조가 더 붙어요",
+            ["금리 오르면 이자만", "3조가 더 붙어요"],
+            "She climbs the wet hillside path.",
+            "City lights reflect on puddles as she pauses.",
+            "She looks down at the town from the hill.",
+            "She holds the letter against the wind with two hands.",
+        ),
+        _scene(
+            "빚이 월급보다 먼저 커지면 흔들려요",
+            ["빚이 월급보다 먼저 컸어요", "내 이자부터 흔들려요"],
+            "She looks at the hillside town, one hand on her chest.",
+            "Same face, same cardigan, dusk town behind her.",
+            "She looks at the letter one last time.",
+            "She walks toward the glowing windows in the same clothes.",
+        ),
     ]
     data = dict(
         title="가계빚 2000조, 이자만 3조 더?",
@@ -40,7 +84,7 @@ def _ok(**overrides) -> Script:
         tags=["가계빚", "주담대", "영끌", "금리인상"],
         hashtags="#가계빚 #주담대 #영끌 #금리인상 #돈이웃 #쇼츠 #shorts",
         scenes=scenes,
-        style=Style(anchor=ANCHOR, face=FACE, mood="quiet dusk hillside town"),
+        style=Style(anchor=ANCHOR, face=FACE, wardrobe=WARDROBE, mood="quiet dusk hillside town"),
     )
     data.update(overrides)
     return Script(**data)
@@ -104,21 +148,23 @@ class CopyValidateTests(unittest.TestCase):
 
     def test_rejects_photoreal_ai_face_prompt(self):
         scenes = _ok().scenes
-        scenes[0].image_prompt = ANCHOR + " " + FACE + " A photorealistic cinematic photo of a worried Korean senior."
+        scenes[0].beats[0].image_prompt = (
+            ANCHOR + " " + FACE + " A photorealistic cinematic photo of a worried Korean senior."
+        )
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(scenes=scenes))
         self.assertIn("실사", str(ctx.exception))
 
     def test_rejects_manga_prompt(self):
         scenes = _ok().scenes
-        scenes[0].image_prompt = ANCHOR + " " + FACE + " manga chibi comic panel with speed lines."
+        scenes[0].beats[0].image_prompt = ANCHOR + " " + FACE + " manga chibi comic panel with speed lines."
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(scenes=scenes))
         self.assertIn("망가", str(ctx.exception))
 
     def test_rejects_prompt_without_style_anchor(self):
         scenes = _ok().scenes
-        scenes[1].image_prompt = "A painterly animated film of a woman walking at dusk. Luminous sky."
+        scenes[1].beats[0].image_prompt = "A painterly animated film of a woman walking at dusk. Luminous sky."
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(scenes=scenes))
         self.assertIn("anchor", str(ctx.exception))
@@ -132,45 +178,56 @@ class CopyValidateTests(unittest.TestCase):
             self.assertEqual(loaded.title, script.title)
             self.assertEqual(loaded.style.anchor, ANCHOR)
             self.assertEqual(loaded.style.face, FACE)
-            self.assertIn(ANCHOR, loaded.scenes[0].image_prompt)
-            self.assertIn(FACE, loaded.scenes[0].image_prompt)
+            self.assertEqual(loaded.style.wardrobe, WARDROBE)
+            self.assertEqual(len(loaded.all_beats()), 20)
+            self.assertIn(ANCHOR, loaded.scenes[0].beats[0].image_prompt)
+            self.assertIn(FACE, loaded.scenes[0].beats[0].image_prompt)
+            self.assertIn(ANATOMY_LOCK, loaded.scenes[0].beats[0].image_prompt)
 
-    def test_rejects_missing_image_prompt(self):
+    def test_rejects_missing_beats(self):
         script = _ok()
         payload = script.to_json()
-        payload["scenes"][0].pop("image_prompt", None)
+        payload["scenes"][0].pop("beats", None)
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "script.json"
             path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
             with self.assertRaises(ValueError) as ctx:
                 load_script(path)
-        self.assertIn("image_prompt", str(ctx.exception))
+        self.assertIn("beats", str(ctx.exception))
 
     def test_rejects_prompt_without_face_lock(self):
         scenes = _ok().scenes
-        scenes[2].image_prompt = ANCHOR + ". She walks at dusk. Soft theatrical animation. Luminous sky."
+        scenes[2].beats[0].image_prompt = ANCHOR + ". She walks at dusk. Soft theatrical animation. Luminous sky."
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(scenes=scenes))
         self.assertIn("face", str(ctx.exception))
 
+    def test_rejects_prompt_without_wardrobe_or_anatomy(self):
+        scenes = _ok().scenes
+        scenes[0].beats[1].image_prompt = ANCHOR + " " + FACE + " Soft theatrical animation. Luminous sky."
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(scenes=scenes))
+        msg = str(ctx.exception)
+        self.assertTrue("wardrobe" in msg or "해부" in msg)
+
     def test_rejects_age_drift_across_scenes(self):
         scenes = _ok().scenes
-        scenes[1].image_prompt = (
+        scenes[1].beats[0].image_prompt = (
             ANCHOR + " " + FACE + " A youthful 20s woman walks in the rain. Soft theatrical animation."
         )
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(scenes=scenes))
         self.assertIn("얼굴", str(ctx.exception))
 
-    def test_rejects_clip_longer_than_ten(self):
+    def test_rejects_duration_not_multiple_of_three(self):
         scenes = _ok().scenes
-        scenes[0].duration = 12
+        scenes[0].duration = 10
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "script.json"
             path.write_text(json.dumps(_ok(scenes=scenes).to_json(), ensure_ascii=False), encoding="utf-8")
             with self.assertRaises(ValueError) as ctx:
                 load_script(path)
-        self.assertIn("5~10", str(ctx.exception))
+        self.assertIn("3초", str(ctx.exception))
 
     def test_description_body_strips_hashtags_and_disclaimer(self):
         raw = "본문이에요.\n\n#가계빚 #쇼츠\n정보 제공이 목적이며 투자 권유가 아닙니다."

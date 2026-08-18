@@ -8,7 +8,7 @@ import textwrap
 from pathlib import Path
 
 from shorts.config import ROOT
-from shorts.models import Script, Scene, scene_media_path
+from shorts.models import BEAT_SEC, Script, Scene, beat_media_path
 
 log = logging.getLogger("shorts")
 FONT = "/System/Library/Fonts/AppleSDGothicNeo.ttc"
@@ -98,6 +98,18 @@ def caption_beats(scene: Scene) -> list[tuple[str, float]]:
         beats.append((text, dur))
         elapsed += dur
     return beats
+
+
+def caption_at(scene: Scene, t: float) -> str:
+    slots = caption_beats(scene)
+    if not slots:
+        return ""
+    elapsed = 0.0
+    for text, dur in slots:
+        if t < elapsed + dur:
+            return text
+        elapsed += dur
+    return slots[-1][0]
 
 
 def _caption_font(size: int):
@@ -237,22 +249,22 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
     height = int(cfg.get("height") or 1920)
     fps = int(cfg.get("fps") or 30)
     duration = script.total_duration()
-    if not (20 <= duration <= 50):
-        raise SystemExit("장면 duration 합은 20~50초 (지금 %.1f)" % duration)
+    if not (48 <= duration <= 60):
+        raise SystemExit("장면 duration 합은 48~60초 (지금 %.1f)" % duration)
     bgm = resolve_bgm(cfg)
     volume = float(cfg.get("bgm_volume") or 0.32)
 
     missing = []
     media = []
-    for i, _scene in enumerate(script.scenes, 1):
-        path = scene_media_path(job_dir, i)
+    for i, _beat in enumerate(script.all_beats(), 1):
+        path = beat_media_path(job_dir, i)
         if path is None:
-            missing.append("scene-%02d.png" % i)
+            missing.append("beat-%02d.png" % i)
         else:
             media.append(path)
     if missing:
         raise SystemExit(
-            "장면 이미지 없음: %s. GenerateImage 로 scene-01.png … 를 넣어라. 줌·검정 레터박스 없음."
+            "비트 이미지 없음: %s. GenerateImage 로 beat-01.png … 를 넣어라. 3초당 1장. 줌·검정 레터박스 없음."
             % ", ".join(missing)
         )
 
@@ -261,22 +273,22 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
         shutil.rmtree(work)
     work.mkdir()
     clips = []
-    for i, (src, scene) in enumerate(zip(media, script.scenes), 1):
-        raw = work / ("clip-%02d-raw.mp4" % i)
-        _fit_clip(ffmpeg, src, raw, scene.duration, fps, width, height)
-        elapsed = 0.0
-        for j, (text, beat_dur) in enumerate(caption_beats(scene), 1):
-            cap = work / ("cap-%02d-%02d.png" % (i, j))
+    idx = 0
+    for scene in script.scenes:
+        t = 0.0
+        for _beat in scene.beats:
+            idx += 1
+            src = media[idx - 1]
+            raw = work / ("beat-%02d-raw.mp4" % idx)
+            _fit_clip(ffmpeg, src, raw, BEAT_SEC, fps, width, height)
+            text = caption_at(scene, t + BEAT_SEC / 2)
+            cap = work / ("cap-%02d.png" % idx)
             write_caption_png(text, cap, width=width)
-            clip = work / ("clip-%02d-%02d.mp4" % (i, j))
+            clip = work / ("clip-%02d.mp4" % idx)
             _run(
                 [
                     ffmpeg,
                     "-y",
-                    "-ss",
-                    "%.3f" % elapsed,
-                    "-t",
-                    "%.3f" % beat_dur,
                     "-i",
                     str(raw),
                     "-i",
@@ -289,12 +301,12 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
                     "yuv420p",
                     "-an",
                     "-t",
-                    "%.3f" % beat_dur,
+                    "%.3f" % BEAT_SEC,
                     str(clip),
                 ]
             )
             clips.append(clip)
-            elapsed += beat_dur
+            t += BEAT_SEC
 
     concat = work / "concat.txt"
     concat.write_text("".join("file '%s'\n" % c.resolve() for c in clips), encoding="utf-8")

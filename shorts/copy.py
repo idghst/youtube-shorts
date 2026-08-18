@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import re
 
+from shorts.models import ANATOMY_LOCK
+
 BANNED = (
     "알아보겠습니다",
     "살펴보겠습니다",
@@ -180,6 +182,20 @@ def style_face(script) -> str:
     return (getattr(style, "face", None) or "").strip()
 
 
+def style_wardrobe(script) -> str:
+    style = getattr(script, "style", None)
+    return (getattr(style, "wardrobe", None) or "").strip()
+
+
+def _scene_prompts(scene) -> list:
+    prompts = [b.image_prompt for b in (getattr(scene, "beats", None) or []) if getattr(b, "image_prompt", "")]
+    if prompts:
+        return prompts
+    if getattr(scene, "image_prompt", ""):
+        return [scene.image_prompt]
+    return []
+
+
 def age_band(text: str) -> str:
     blob = (text or "").lower()
     young = any(mark in blob for mark in _YOUNG_FACE)
@@ -249,10 +265,13 @@ def validate_script(script) -> None:
         errors.append("captions 필요")
     anchor = style_anchor(script)
     face = style_face(script)
+    wardrobe = style_wardrobe(script)
     if len(anchor) < 24:
         errors.append("style.anchor 필요")
     if len(face) < 24:
         errors.append("style.face 필요")
+    if len(wardrobe) < 16:
+        errors.append("style.wardrobe 필요")
     bands = set()
     if age_band(face) == "mixed":
         errors.append("style.face 나이가 섞여 있음")
@@ -266,24 +285,31 @@ def validate_script(script) -> None:
         banned = _hit_banned(blob)
         if banned:
             errors.append("scenes[%d] 금지어: %s" % (i, banned))
-        prompt = scene.image_prompt or ""
-        if _hit_photo(prompt):
-            errors.append("scenes[%d] 실사 프롬프트 금지" % i)
-        if _hit_manga(prompt):
-            errors.append("scenes[%d] 망가/만화체 금지" % i)
-        if prompt and not _has_style_need(prompt):
-            errors.append("scenes[%d] 장편 애니 화풍 단어 필요" % i)
-        if anchor and anchor not in prompt:
-            errors.append("scenes[%d] 프롬프트에 style.anchor 없음" % i)
-        if face and face not in prompt:
-            errors.append("scenes[%d] 프롬프트에 style.face 없음" % i)
-        if any(mark in prompt.lower() for mark in _AGE_DRIFT):
-            errors.append("scenes[%d] 얼굴 나이 변경 금지" % i)
-        band = age_band(prompt)
-        if band == "mixed":
-            errors.append("scenes[%d] 얼굴 나이가 한 장면에서 섞임" % i)
-        elif band:
-            bands.add(band)
+        prompts = _scene_prompts(scene)
+        if not prompts:
+            errors.append("scenes[%d] beats 필요" % i)
+        for prompt in prompts:
+            if _hit_photo(prompt):
+                errors.append("scenes[%d] 실사 프롬프트 금지" % i)
+            if _hit_manga(prompt):
+                errors.append("scenes[%d] 망가/만화체 금지" % i)
+            if prompt and not _has_style_need(prompt):
+                errors.append("scenes[%d] 장편 애니 화풍 단어 필요" % i)
+            if anchor and anchor not in prompt:
+                errors.append("scenes[%d] 프롬프트에 style.anchor 없음" % i)
+            if face and face not in prompt:
+                errors.append("scenes[%d] 프롬프트에 style.face 없음" % i)
+            if wardrobe and wardrobe not in prompt:
+                errors.append("scenes[%d] 프롬프트에 style.wardrobe 없음" % i)
+            if ANATOMY_LOCK not in prompt:
+                errors.append("scenes[%d] 해부 고정 없음" % i)
+            if any(mark in prompt.lower() for mark in _AGE_DRIFT):
+                errors.append("scenes[%d] 얼굴 나이 변경 금지" % i)
+            band = age_band(prompt)
+            if band == "mixed":
+                errors.append("scenes[%d] 얼굴 나이가 한 장면에서 섞임" % i)
+            elif band:
+                bands.add(band)
         for cap in caps:
             if len(cap) > 28:
                 errors.append("자막이 김: %s" % cap[:20])

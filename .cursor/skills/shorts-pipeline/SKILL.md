@@ -24,13 +24,13 @@ description: Makes one Korean finance YouTube Short from RSS via local CLI plus 
 저장소 루트에서. 이 순서를 건너뛰거나 한 파일에 대충 몰아 쓰지 말 것.
 
 1. **이전 주제** + **주제 선정**: `.venv/bin/python -m shorts pick --channel 돈이웃` → stdout이 잡 폴더. 시니어 관심(연금·노후·건보·상속·예적금·부동산) 우선. 숫자·삭감·인상 같은 훅이 있으면 더 앞. “쓸 헤드라인 없음”이면 중단.
-2. **이 쇼츠의 화풍 하나**: `style.anchor`와 `style.face`를 먼저 고정한다. 쇼츠마다 달라도 된다. **한 쇼츠 안 컷은 같은 얼굴·나이·옷·마을·빛이어야 한다.**
+2. **이 쇼츠의 화풍 하나**: `style.anchor`·`style.face`·`style.wardrobe`를 먼저 고정한다. 쇼츠마다 달라도 된다. **한 쇼츠 안 컷은 같은 얼굴·나이·옷·마을·빛이어야 한다.**
 3. **대본**: `headline.json`과 `used-topics.json`을 보고 `script.json`의 `scenes`만 먼저 쓴다. 장면은 스토리가 이어지게. OpenAI/Gemini HTTP 금지. 이전 제목과 같은 각도·같은 훅 금지.
 4. **제목**: 대본을 본 뒤에 `title`. 대본 첫 줄을 옮기지 말 것. 숫자 또는 물음표 필수.
 5. **설명**: 제목 다음에 `description` 본문만.
 6. **해시태그**: `hashtags`와 `tags`. 그다음 `script.json`을 저장.
-7. **이미지**: 아래 **화면** 절로 장면마다 프롬프트를 쓴 뒤, Cursor **GenerateImage** (`aspect_ratio: 9:16`) → `scene-01.png` …. 첫 컷을 레퍼런스로 나머지 얼굴을 고정. 실사 사람·망가체 금지. 동영상 클립·imagegen CLI / OPENAI_API_KEY 폴백 금지.
-8. **영상**: `.venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>` → `video.mp4`. 장면 5~10초, 합 20~50초. 성공 시 `rendered`.
+7. **이미지**: 아래 **화면** 절로 비트마다 프롬프트를 쓴 뒤, Cursor **GenerateImage** (`aspect_ratio: 9:16`) → `beat-01.png` …. 3초당 1장. 60초면 20장. 직전 컷(+ beat-01)을 레퍼런스로 얼굴·옷을 고정. 실사 사람·망가체 금지. 동영상 클립·imagegen CLI / OPENAI_API_KEY 폴백 금지.
+8. **영상**: `.venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>` → `video.mp4`. duration은 3초 배수, 합 48~60초(권장 60초/20장). 성공 시 `rendered`.
 9. **업로드**: 사용자가 `올려줘`/`업로드` 할 때, 또는 시간별 자동화일 때. **REQUIRED:** `.cursor/skills/shorts-upload/SKILL.md`.
 10. **기록**: Studio로 올렸으면 `.venv/bin/python -m shorts record --dir out/<channel>/<job> --status uploaded --video-id <id>`.
 
@@ -49,19 +49,26 @@ description: Makes one Korean finance YouTube Short from RSS via local CLI plus 
   "style": {
     "anchor": "the same silver-haired Korean woman in a cream cardigan, painterly animated film, luminous dusk sky",
     "face": "same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age",
+    "wardrobe": "same cream cardigan over ivory blouse every beat",
     "mood": "quiet hillside town, wet streets, glowing windows"
   },
   "scenes": [
-    {"text": "가계빚이 2000조를 넘겼어요. 이자가 더 문제예요", "duration": 7, "captions": ["이자가 더 붙는다고요?", "가계빚이 2000조예요"], "image_prompt": "the same silver-haired Korean woman in a cream cardigan, painterly animated film, luminous dusk sky. same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age. She reads an unmarked envelope by the apartment window. Soft theatrical animation, camera holds still. Vertical 9:16."},
-    {"text": "영끌과 빚투가 밀어 올렸어요. 늘어난 빚의 열 중 여덟이 주담대예요", "duration": 8, "captions": ["영끌이랑 빚투가 밀었어요", "늘분의 열 중 여덟이 주담대"], "image_prompt": "the same silver-haired Korean woman in a cream cardigan, painterly animated film, luminous dusk sky. same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age. She sits at the wooden table and opens the envelope. Soft theatrical animation, camera holds still. Vertical 9:16."},
-    {"text": "은행 한도를 넓히면 더 늘 수 있어요. 연체는 10년 만에 제일 높아요", "duration": 8, "captions": ["한도를 넓히면 더 늘어요", "연체는 10년 만에 최고예요"], "image_prompt": "the same silver-haired Korean woman in a cream cardigan, painterly animated film, luminous dusk sky. same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age. She walks down wet dusk streets holding the letter. Soft theatrical animation, camera holds still. Vertical 9:16."},
-    {"text": "금리가 오르면 이자만 3조가 더 붙어요", "duration": 7, "captions": ["금리 오르면 이자만", "3조가 더 붙어요"], "image_prompt": "the same silver-haired Korean woman in a cream cardigan, painterly animated film, luminous dusk sky. same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age. City lights tremble on puddles as she pauses on the hill. Soft theatrical animation, camera holds still. Vertical 9:16."},
-    {"text": "빚이 월급보다 먼저 커지면 금리에 한 번에 흔들려요", "duration": 6, "captions": ["빚이 월급보다 먼저 컸어요", "내 이자부터 흔들려요"], "image_prompt": "the same silver-haired Korean woman in a cream cardigan, painterly animated film, luminous dusk sky. same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age. She looks at the hillside town with a hand on her chest. Soft theatrical animation, camera holds still. Vertical 9:16."}
+    {
+      "text": "가계빚이 2000조를 넘겼어요. 이자가 더 문제예요",
+      "duration": 12,
+      "captions": ["이자가 더 붙는다고요?", "가계빚이 2000조예요"],
+      "beats": [
+        {"image_prompt": "the same silver-haired Korean woman in a cream cardigan, painterly animated film, luminous dusk sky. same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age. same cream cardigan over ivory blouse every beat. exactly two hands and two feet, no extra limbs. She reads an unmarked envelope by the apartment window. Soft theatrical animation. Vertical 9:16."},
+        {"image_prompt": "the same silver-haired Korean woman in a cream cardigan, painterly animated film, luminous dusk sky. same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age. same cream cardigan over ivory blouse every beat. exactly two hands and two feet, no extra limbs. She turns the envelope over with both hands. Soft theatrical animation. Vertical 9:16."},
+        {"image_prompt": "the same silver-haired Korean woman in a cream cardigan, painterly animated film, luminous dusk sky. same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age. same cream cardigan over ivory blouse every beat. exactly two hands and two feet, no extra limbs. She looks out the dusk window, envelope at her chest. Soft theatrical animation. Vertical 9:16."},
+        {"image_prompt": "the same silver-haired Korean woman in a cream cardigan, painterly animated film, luminous dusk sky. same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age. same cream cardigan over ivory blouse every beat. exactly two hands and two feet, no extra limbs. She steps back from the window, still holding the letter. Soft theatrical animation. Vertical 9:16."}
+      ]
+    }
   ]
 }
 ```
 
-scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration` 5~10, 합 20~50. 대본은 화면 자막만. `load_script`가 카피·화풍을 검사한다.
+scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration`은 3초 배수, `beats` 개수 = duration/3. 합 48~60초. 권장 60초·이미지 20장(5장면×12초×4비트). 위 JSON은 장면 1만 예시. 나머지 장면도 beats 4개, 같은 하루로 행동이 이어지게. 대본은 화면 자막만. `load_script`가 카피·화풍을 검사한다.
 
 ## 제목 (클릭·검색)
 
@@ -104,23 +111,25 @@ scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration` 5~10, 합 20~50. 대본�
 - 무음으로 3초 안에 뜻을 알게. 뉴스 용어는 쉬운 말로.
 - 숫자·핵심어만 색/굵기. 키네틱 금지.
 
-## 화면 (정지 컷)
+## 화면 (3초 정지 컷)
 
-동영상 클립은 만들지 않는다. 장면마다 Cursor **GenerateImage** `aspect_ratio: 9:16` → `scene-01.png` ….
+동영상 클립은 만들지 않는다. **음악 3초마다 이미지가 바뀐다.** Cursor **GenerateImage** `aspect_ratio: 9:16` → `beat-01.png` … `beat-20.png`. 60초면 20장.
 
 실사 사람 금지. 망가/만화잡지/치비/효과선 금지. 프롬프트에 manga, photoreal, zoom 단어를 넣지 말 것. 디즈니·지브리·신카이 장편 **느낌**. 특정 저작권 캐릭터 금지.
 
-**한 쇼츠 = 한 `style.anchor` + 한 `style.face`.** 모든 `image_prompt`에 두 문장을 그대로 넣는다.
+**한 쇼츠 = 한 `style.anchor` + 한 `style.face` + 한 `style.wardrobe`.** 모든 beat `image_prompt`에 세 문장과 `exactly two hands and two feet, no extra limbs`를 그대로 넣는다.
 
-얼굴 고정:
+이어짐:
+- 20장은 같은 하루의 연속 컷. 비트마다 행동이 한 걸음만 바뀐다. 갑자기 다른 사람·다른 옷·다른 마을이면 다시 생성.
 - `style.face`에 나이·머리·이목구비를 잠근다. 예: `same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age`
+- `style.wardrobe`에 겉옷·색을 잠근다. 컷마다 옷이 바뀌면 다시 생성.
+- 손·발·팔이 같은 방향에 두 개·세 개면 버린다. 프롬프트에 해부 고정 문장을 빼지 마라.
+- 먼저 `beat-01.png`. 다음부터는 `reference_image_paths`에 **직전 비트**와 `beat-01.png`를 넣고 같은 얼굴을 유지한다.
 - 컷마다 젊어지거나 늙으면 다시 생성. 20s와 60s를 한 편에 섞지 마라.
-- 먼저 `scene-01.png`를 만든다. 2번째부터는 `reference_image_paths`에 scene-01을 넣고 같은 얼굴을 유지한다.
-- 인물·옷·머리·마을·시간대가 바뀌면 다시 쓴다. 스토리는 같은 하루처럼 이어지게.
 
 쇼츠끼리는 화풍을 바꿔도 된다. 다음 편에 같은 구도·같은 훅 금지.
 
-프롬프트: `style.anchor`. `style.face`. [이번 장면 행동만]. `Soft theatrical animation.` `Vertical 9:16.`
+프롬프트: `style.anchor`. `style.face`. `style.wardrobe`. `exactly two hands and two feet, no extra limbs`. [이번 3초 행동만]. `Soft theatrical animation.` `Vertical 9:16.`
 
 - 한글·숫자·로고·워터마크·실존 유명인 얼굴 금지.
 - 줌 인 금지. 렌더는 `scale=1080:1920`만 한다. crop/increase/검정 레터박스/자막 검정 박스 없음.
@@ -143,5 +152,5 @@ scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration` 5~10, 합 20~50. 대본�
 - 유튜브 영상/음원 yt-dlp
 - `OPENAI_API_KEY` / `GEMINI_API_KEY` / `FAL_KEY`
 - imagegen CLI (`scripts/image_gen.py`)
-- 실사 사람 얼굴, 망가체, 줌 확대, 동영상 클립 생성, 얼굴 나이 들쭉날쭉
+- 실사 사람 얼굴, 망가체, 줌 확대, 동영상 클립 생성, 얼굴 나이 들쭉날쭉, 손발 중복
 - 렌더 위조 (ffmpeg 없으면 중단)

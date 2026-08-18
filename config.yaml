@@ -16,7 +16,7 @@ rss:
 
 width: 1080
 height: 1920
-max_seconds: 50
+max_seconds: 60
 fps: 30
 bgm: assets/bgm/running-out-of-time.mp3
 bgm_volume: 0.32

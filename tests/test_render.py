@@ -5,8 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from shorts.models import Scene, Script, Style, scene_media_path
-from shorts.render import fit_vf, write_caption_png
+from shorts.models import ANATOMY_LOCK, Beat, Scene, Script, Style, beat_media_path, scene_media_path
+from shorts.render import caption_at, fit_vf, write_caption_png
 from shorts.run import missing_agent_assets
 
 ANCHOR = (
@@ -17,21 +17,33 @@ FACE = (
     "same late-60s Korean woman, silver bob to the jaw, "
     "soft eye wrinkles, round cheeks, do not change age"
 )
+WARDROBE = "same cream cardigan over ivory blouse every beat"
+
+
+def _prompt() -> str:
+    return (
+        "%s. %s. %s. %s. Soft theatrical animation, luminous sky. Vertical 9:16."
+        % (ANCHOR, FACE, WARDROBE, ANATOMY_LOCK)
+    )
+
+
+def _beats(n: int) -> list:
+    return [Beat(image_prompt=_prompt()) for _ in range(n)]
 
 
 def _script() -> Script:
-    prompt = ANCHOR + ". " + FACE + ". Soft theatrical animation, luminous sky. Vertical 9:16."
     return Script(
         title="가계빚 2000조, 이자만 3조 더?",
         description="영끌이랑 빚투로 가계빚이 처음 2000조를 넘겼어요. 늘어난 빚의 열 중 여덟이 주택담보대출이고, 금리가 오르면 이자만 3조가 더 붙는다는 얘기예요.",
         tags=["가계빚", "주담대"],
         hashtags="#가계빚 #주담대 #영끌 #금리인상 #돈이웃 #쇼츠 #shorts",
-        style=Style(anchor=ANCHOR, face=FACE, mood="dusk town"),
+        style=Style(anchor=ANCHOR, face=FACE, wardrobe=WARDROBE, mood="dusk town"),
         scenes=[
-            Scene("가계빚이 2000조를 넘겼어요", prompt, 7, ["이자가 더 붙는다고요?", "가계빚이 2000조예요"]),
-            Scene("영끌과 빚투가 밀어 올렸어요", prompt, 8, ["영끌이랑 빚투가 밀었어요", "늘분의 열 중 여덟이 주담대"]),
-            Scene("한도를 넓히면 더 늘어요", prompt, 8, ["한도를 넓히면 더 늘어요", "연체는 10년 만에 최고예요"]),
-            Scene("내 이자부터 흔들려요", prompt, 7, ["빚이 월급보다 먼저 컸어요", "내 이자부터 흔들려요"]),
+            Scene("가계빚이 2000조를 넘겼어요", duration=12, captions=["이자가 더 붙는다고요?", "가계빚이 2000조예요"], beats=_beats(4)),
+            Scene("영끌과 빚투가 밀어 올렸어요", duration=12, captions=["영끌이랑 빚투가 밀었어요", "늘분의 열 중 여덟이 주담대"], beats=_beats(4)),
+            Scene("한도를 넓히면 더 늘어요", duration=12, captions=["한도를 넓히면 더 늘어요", "연체는 10년 만에 최고예요"], beats=_beats(4)),
+            Scene("금리가 오르면 이자만 3조", duration=12, captions=["금리 오르면 이자만", "3조가 더 붙어요"], beats=_beats(4)),
+            Scene("내 이자부터 흔들려요", duration=12, captions=["빚이 월급보다 먼저 컸어요", "내 이자부터 흔들려요"], beats=_beats(4)),
         ],
     )
 
@@ -59,6 +71,11 @@ class CaptionTests(unittest.TestCase):
             self.assertEqual(img.getpixel((1079, 0))[3], 0)
             self.assertEqual(img.getpixel((0, img.size[1] - 1))[3], 0)
 
+    def test_caption_follows_scene_time(self):
+        scene = _script().scenes[0]
+        self.assertEqual(caption_at(scene, 1.5), "이자가 더 붙는다고요?")
+        self.assertEqual(caption_at(scene, 7.5), "가계빚이 2000조예요")
+
 
 class MediaPathTests(unittest.TestCase):
     def test_uses_png(self):
@@ -67,15 +84,21 @@ class MediaPathTests(unittest.TestCase):
             (job / "scene-01.png").write_bytes(b"png")
             self.assertEqual(scene_media_path(job, 1).name, "scene-01.png")
 
+    def test_uses_beat_png(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            job = Path(tmp)
+            (job / "beat-03.png").write_bytes(b"png")
+            self.assertEqual(beat_media_path(job, 3).name, "beat-03.png")
+
     def test_mp4_alone_is_ignored(self):
         with tempfile.TemporaryDirectory() as tmp:
             job = Path(tmp)
-            (job / "scene-02.mp4").write_bytes(b"mp4")
-            self.assertIsNone(scene_media_path(job, 2))
+            (job / "beat-02.mp4").write_bytes(b"mp4")
+            self.assertIsNone(beat_media_path(job, 2))
 
     def test_missing_returns_none(self):
         with tempfile.TemporaryDirectory() as tmp:
-            self.assertIsNone(scene_media_path(Path(tmp), 1))
+            self.assertIsNone(beat_media_path(Path(tmp), 1))
 
 
 class MissingAssetsTests(unittest.TestCase):
@@ -87,7 +110,8 @@ class MissingAssetsTests(unittest.TestCase):
                 encoding="utf-8",
             )
             gaps = missing_agent_assets(job)
-        self.assertTrue(any("scene-01.png" in g for g in gaps))
+        self.assertTrue(any("beat-01.png" in g for g in gaps))
+        self.assertTrue(any("beat-20.png" in g for g in gaps))
 
     def test_png_is_enough(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -96,8 +120,8 @@ class MissingAssetsTests(unittest.TestCase):
                 json.dumps(_script().to_json(), ensure_ascii=False),
                 encoding="utf-8",
             )
-            for i in range(1, 5):
-                (job / ("scene-%02d.png" % i)).write_bytes(b"x")
+            for i in range(1, 21):
+                (job / ("beat-%02d.png" % i)).write_bytes(b"x")
             self.assertEqual(missing_agent_assets(job), [])
 
     def test_missing_script(self):

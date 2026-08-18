@@ -30,27 +30,40 @@ class Headline:
         )
 
 
+BEAT_SEC = 3.0
+ANATOMY_LOCK = "exactly two hands and two feet, no extra limbs"
+
+
 @dataclass
 class Style:
     anchor: str
     mood: str = ""
     face: str = ""
+    wardrobe: str = ""
 
     def to_json(self) -> dict:
         data = {"anchor": self.anchor}
         if self.face:
             data["face"] = self.face
+        if self.wardrobe:
+            data["wardrobe"] = self.wardrobe
         if self.mood:
             data["mood"] = self.mood
         return data
 
 
 @dataclass
+class Beat:
+    image_prompt: str
+
+
+@dataclass
 class Scene:
     text: str
-    image_prompt: str
-    duration: float
+    image_prompt: str = ""
+    duration: float = 0
     captions: list = field(default_factory=list)
+    beats: list = field(default_factory=list)
 
 
 @dataclass
@@ -65,16 +78,24 @@ class Script:
     def total_duration(self) -> float:
         return sum(s.duration for s in self.scenes)
 
+    def all_beats(self) -> list:
+        out = []
+        for s in self.scenes:
+            out.extend(s.beats)
+        return out
+
     def to_json(self) -> dict:
         scenes = []
         for s in self.scenes:
             item = {
                 "text": s.text,
-                "image_prompt": s.image_prompt,
                 "duration": s.duration,
+                "beats": [{"image_prompt": b.image_prompt} for b in s.beats],
             }
             if s.captions:
                 item["captions"] = list(s.captions)
+            if s.image_prompt and not s.beats:
+                item["image_prompt"] = s.image_prompt
             scenes.append(item)
         data = {
             "title": self.title,
@@ -100,22 +121,40 @@ def load_script(path: Path) -> Script:
     scenes = []
     for i, raw in enumerate(data.get("scenes") or [], 1):
         text = str(raw.get("text") or "").strip()
-        prompt = str(raw.get("image_prompt") or "").strip()
         try:
             duration = float(raw.get("duration"))
         except (TypeError, ValueError):
             raise ValueError("scenes[%d] 에 duration(초) 필요" % i)
         if duration <= 0:
             raise ValueError("scenes[%d] duration 은 0보다 커야 함" % i)
-        if not text or not prompt:
-            raise ValueError("scenes[%d] 에 text/image_prompt 필요" % i)
-        if not (5 <= duration <= 10):
-            raise ValueError("scenes[%d] duration 은 5~10초" % i)
+        if not text:
+            raise ValueError("scenes[%d] 에 text 필요" % i)
+        nbeat = int(round(duration / BEAT_SEC))
+        if abs(duration - nbeat * BEAT_SEC) > 0.01:
+            raise ValueError("scenes[%d] duration 은 3초 배수" % i)
+        raw_beats = raw.get("beats")
+        if not raw_beats:
+            raise ValueError("scenes[%d] 에 beats 필요" % i)
+        if not isinstance(raw_beats, list):
+            raise ValueError("scenes[%d] beats 는 배열" % i)
+        if len(raw_beats) != nbeat:
+            raise ValueError("scenes[%d] beats 는 %d개 (3초당 1장)" % (i, nbeat))
+        beats = []
+        for j, item in enumerate(raw_beats, 1):
+            if isinstance(item, str):
+                prompt = item.strip()
+            elif isinstance(item, dict):
+                prompt = str(item.get("image_prompt") or "").strip()
+            else:
+                raise ValueError("scenes[%d].beats[%d] 형식 오류" % (i, j))
+            if not prompt:
+                raise ValueError("scenes[%d].beats[%d] image_prompt 필요" % (i, j))
+            beats.append(Beat(image_prompt=prompt))
         raw_caps = raw.get("captions") or []
         if raw_caps and not isinstance(raw_caps, list):
             raise ValueError("scenes[%d] captions 는 배열" % i)
         captions = [str(c).strip() for c in raw_caps if str(c).strip()]
-        scenes.append(Scene(text=text, image_prompt=prompt, duration=duration, captions=captions))
+        scenes.append(Scene(text=text, duration=duration, captions=captions, beats=beats))
     title = str(data.get("title") or "").strip()
     if not title:
         raise ValueError("title 필요")
@@ -124,14 +163,18 @@ def load_script(path: Path) -> Script:
     if not (4 <= len(scenes) <= 5):
         raise ValueError("scenes 는 4~5개")
     total = sum(s.duration for s in scenes)
-    if not (20 <= total <= 50):
-        raise ValueError("장면 duration 합은 20~50초 (지금 %.1f)" % total)
+    nbeat = sum(len(s.beats) for s in scenes)
+    if not (48 <= total <= 60):
+        raise ValueError("장면 duration 합은 48~60초 (지금 %.1f)" % total)
+    if not (16 <= nbeat <= 20):
+        raise ValueError("이미지는 16~20장 (지금 %d). 3초당 1장" % nbeat)
     raw_style = data.get("style") or {}
     if raw_style and not isinstance(raw_style, dict):
         raise ValueError("style 은 객체")
     style = Style(
         anchor=str((raw_style or {}).get("anchor") or "").strip(),
         face=str((raw_style or {}).get("face") or "").strip(),
+        wardrobe=str((raw_style or {}).get("wardrobe") or "").strip(),
         mood=str((raw_style or {}).get("mood") or "").strip(),
     )
     tags = [str(t).strip() for t in (data.get("tags") or []) if str(t).strip()]
@@ -151,6 +194,18 @@ def load_script(path: Path) -> Script:
 
 def scene_image_path(job_dir: Path, index: int) -> Path:
     return job_dir / ("scene-%02d.png" % index)
+
+
+def beat_image_path(job_dir: Path, index: int) -> Path:
+    return job_dir / ("beat-%02d.png" % index)
+
+
+def beat_media_path(job_dir: Path, index: int) -> Path | None:
+    for suffix in (".png", ".jpg", ".jpeg", ".webp"):
+        path = job_dir / ("beat-%02d%s" % (index, suffix))
+        if path.is_file() and path.stat().st_size > 0:
+            return path
+    return None
 
 
 def scene_media_path(job_dir: Path, index: int) -> Path | None:
