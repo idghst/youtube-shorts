@@ -34,9 +34,12 @@ class Headline:
 class Style:
     anchor: str
     mood: str = ""
+    face: str = ""
 
     def to_json(self) -> dict:
         data = {"anchor": self.anchor}
+        if self.face:
+            data["face"] = self.face
         if self.mood:
             data["mood"] = self.mood
         return data
@@ -128,6 +131,7 @@ def load_script(path: Path) -> Script:
         raise ValueError("style 은 객체")
     style = Style(
         anchor=str((raw_style or {}).get("anchor") or "").strip(),
+        face=str((raw_style or {}).get("face") or "").strip(),
         mood=str((raw_style or {}).get("mood") or "").strip(),
     )
     tags = [str(t).strip() for t in (data.get("tags") or []) if str(t).strip()]
@@ -150,7 +154,7 @@ def scene_image_path(job_dir: Path, index: int) -> Path:
 
 
 def scene_media_path(job_dir: Path, index: int) -> Path | None:
-    for suffix in (".mp4", ".webm", ".mov", ".png", ".jpg", ".jpeg", ".webp"):
+    for suffix in (".mp4", ".webm", ".mov"):
         path = job_dir / ("scene-%02d%s" % (index, suffix))
         if path.is_file() and path.stat().st_size > 0:
             return path

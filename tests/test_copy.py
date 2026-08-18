@@ -12,13 +12,17 @@ ANCHOR = (
     "the same silver-haired Korean woman in a cream cardigan, "
     "painterly animated film, luminous dusk sky"
 )
+FACE = (
+    "same late-60s Korean woman, silver bob to the jaw, "
+    "soft eye wrinkles, round cheeks, do not change age"
+)
 
 
 def _prompt(beat: str) -> str:
     return (
-        "%s. %s Soft theatrical animation. "
+        "%s. %s. %s Soft theatrical animation. "
         "Vertical 9:16, empty lower third."
-        % (ANCHOR, beat)
+        % (ANCHOR, FACE, beat)
     )
 
 
@@ -36,7 +40,7 @@ def _ok(**overrides) -> Script:
         tags=["가계빚", "주담대", "영끌", "금리인상"],
         hashtags="#가계빚 #주담대 #영끌 #금리인상 #돈이웃 #쇼츠 #shorts",
         scenes=scenes,
-        style=Style(anchor=ANCHOR, mood="quiet dusk hillside town"),
+        style=Style(anchor=ANCHOR, face=FACE, mood="quiet dusk hillside town"),
     )
     data.update(overrides)
     return Script(**data)
@@ -100,14 +104,14 @@ class CopyValidateTests(unittest.TestCase):
 
     def test_rejects_photoreal_ai_face_prompt(self):
         scenes = _ok().scenes
-        scenes[0].image_prompt = ANCHOR + " A photorealistic cinematic photo of a worried Korean senior."
+        scenes[0].image_prompt = ANCHOR + " " + FACE + " A photorealistic cinematic photo of a worried Korean senior."
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(scenes=scenes))
         self.assertIn("실사", str(ctx.exception))
 
     def test_rejects_manga_prompt(self):
         scenes = _ok().scenes
-        scenes[0].image_prompt = ANCHOR + " manga chibi comic panel with speed lines."
+        scenes[0].image_prompt = ANCHOR + " " + FACE + " manga chibi comic panel with speed lines."
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(scenes=scenes))
         self.assertIn("망가", str(ctx.exception))
@@ -127,7 +131,9 @@ class CopyValidateTests(unittest.TestCase):
             loaded = load_script(path)
             self.assertEqual(loaded.title, script.title)
             self.assertEqual(loaded.style.anchor, ANCHOR)
+            self.assertEqual(loaded.style.face, FACE)
             self.assertIn(ANCHOR, loaded.scenes[0].image_prompt)
+            self.assertIn(FACE, loaded.scenes[0].image_prompt)
 
     def test_rejects_missing_image_prompt(self):
         script = _ok()
@@ -139,6 +145,22 @@ class CopyValidateTests(unittest.TestCase):
             with self.assertRaises(ValueError) as ctx:
                 load_script(path)
         self.assertIn("image_prompt", str(ctx.exception))
+
+    def test_rejects_prompt_without_face_lock(self):
+        scenes = _ok().scenes
+        scenes[2].image_prompt = ANCHOR + ". She walks at dusk. Soft theatrical animation. Luminous sky."
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(scenes=scenes))
+        self.assertIn("face", str(ctx.exception))
+
+    def test_rejects_age_drift_across_scenes(self):
+        scenes = _ok().scenes
+        scenes[1].image_prompt = (
+            ANCHOR + " " + FACE + " A youthful 20s woman walks in the rain. Soft theatrical animation."
+        )
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(scenes=scenes))
+        self.assertIn("얼굴", str(ctx.exception))
 
     def test_rejects_clip_longer_than_ten(self):
         scenes = _ok().scenes

@@ -2,7 +2,7 @@
 
 장편 애니 화풍 클립을 이어붙인 재테크 쇼츠. **대본·클립은 Cursor 에이전트**, 나머지는 로컬 CLI.
 
-외부 OpenAI/Gemini/FAL 호출 없음. TTS 없음. 영상은 5~10초 클립(또는 정지 컷) 이어붙임 + 자막 + 무료 BGM. **줌 확대 없음.** 실사 사람 얼굴 없음.
+외부 OpenAI/Gemini/FAL 호출 없음. TTS 없음. 영상은 5~10초 `scene-01.mp4` 클립 이어붙임 + 외곽선 자막 + 무료 BGM. **줌·검정 레터박스·png 대체 없음.** 한 편 안 얼굴·나이는 `style.face`로 고정.
 
 ## 준비
 
@@ -23,7 +23,7 @@ Cursor 채팅에서 「쇼츠 만들어」→ 프로젝트 스킬 `.cursor/skill
 
 ```bash
 .venv/bin/python -m shorts pick --channel 돈이웃
-# 에이전트가 out/<channel>/<job>/script.json 작성 + scene-01.mp4(또는 .png) …
+# 에이전트가 out/<channel>/<job>/script.json 작성 + scene-01.mp4 …
 .venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>
 ```
 
@@ -40,7 +40,7 @@ AUTO_PUBLISH=1 .venv/bin/python -m shorts run --dir out/<channel>/<job>
 .venv/bin/python -m shorts auth
 ```
 
-길이는 `script.json`의 `scenes[].duration` 합 (20~50초, 장면당 5~10초). 한 쇼츠 안 클립은 같은 `style.anchor`.
+길이는 `script.json`의 `scenes[].duration` 합 (20~50초, 장면당 5~10초). 한 쇼츠 안 클립은 같은 `style.anchor`와 `style.face`.
 
 흐름: Supabase 이전 주제 → 선정 → 화풍 고정 → 대본 → 제목 → 설명 → 해시태그 → 클립 → 렌더 → 업로드 → Supabase 기록.
 

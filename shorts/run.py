@@ -77,7 +77,7 @@ def missing_agent_assets(job: Path) -> list:
         return missing
     for i, _scene in enumerate(script.scenes, 1):
         if scene_media_path(job, i) is None:
-            missing.append("scene-%02d.mp4 또는 scene-%02d.png" % (i, i))
+            missing.append("scene-%02d.mp4 (5~10초 세로 클립. png 대체 금지)" % i)
     return missing
 
 
@@ -175,7 +175,7 @@ def cmd_run(dir_arg: str | None, dry_run: bool, channel: str | None = None) -> N
             "need": gaps,
             "next": [
                 "에이전트가 script.json 작성 (외부 LLM API 금지)",
-                "장면 클립 scene-01.mp4(5~10초) 또는 scene-01.png. 한 쇼츠는 같은 style.anchor",
+                "장면 클립 scene-01.mp4(5~10초). png 정지컷 금지. 같은 style.anchor·style.face",
                 "python -m shorts run --dry-run --dir %s" % job,
             ],
         }

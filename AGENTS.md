@@ -26,7 +26,7 @@
 ### 파이프라인
 
 1. `.venv/bin/python -m shorts pick --channel 돈이웃` → 이전 주제 조회 후 선정, `headline.json` + `used-topics.json`
-2. 에이전트가 이 쇼츠의 `style.anchor`를 고정한 뒤 대본 → 제목 → 설명 → 해시태그 순으로 `script.json`을 쓴다. 장면 클립은 `scene-01.mp4`(5~10초) 우선, 없으면 `scene-01.png`. 한 쇼츠 안은 같은 인물·화풍·이어지는 스토리. 장편 애니 톤(부드러운 얼굴, 빛 번지는 하늘). 실사 사람·망가체·줌 확대 금지. OpenAI/Gemini/FAL, imagegen CLI 금지. 해요체. 첫 자막은 훅, 마지막은 내 돈.
+2. 에이전트가 `style.anchor`와 `style.face`를 고정한 뒤 대본 → 제목 → 설명 → 해시태그 순으로 `script.json`을 쓴다. 장면은 `scene-01.mp4`(5~10초)만. png 대체 금지. 첫 클립을 레퍼런스로 얼굴을 고정. 한 쇼츠 안은 같은 얼굴·나이·화풍·이어지는 스토리. 장편 애니 톤. 실사 사람·망가체·줌 확대·검정 레터박스 금지. OpenAI/Gemini/FAL, imagegen CLI 금지. 해요체. 첫 자막은 훅, 마지막은 내 돈.
 3. `.venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>` → `video.mp4`. scenes 4~5개, 장면 5~10초, 합 20~50초.
 4. 업로드 후 `record`로 Supabase에 남겨 다음 pick이 중복을 피한다.
 

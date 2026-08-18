@@ -148,7 +148,7 @@ def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
     text_h = sum(vis_h) + gap * (len(lines) - 1)
     pad_y = 28
     box_h = text_h + pad_y * 2
-    img = Image.new("RGBA", (width, box_h), (0, 0, 0, 235))
+    img = Image.new("RGBA", (width, box_h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     y = (box_h - text_h) // 2
     for line, bbox, lh in zip(lines, bboxes, vis_h):
@@ -173,7 +173,7 @@ def write_caption_png(text: str, path: Path, width: int = 1080) -> None:
 
 
 def fit_vf(w: int, h: int) -> str:
-    return "scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d" % (w, h, w, h)
+    return "scale=%d:%d" % (w, h)
 
 
 def _fit_clip(ffmpeg: str, src: Path, dest: Path, seconds: float, fps: int, w: int, h: int) -> None:
@@ -247,12 +247,12 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
     for i, _scene in enumerate(script.scenes, 1):
         path = scene_media_path(job_dir, i)
         if path is None:
-            missing.append("scene-%02d.mp4|png" % i)
+            missing.append("scene-%02d.mp4" % i)
         else:
             media.append(path)
     if missing:
         raise SystemExit(
-            "장면 클립 없음: %s. scene-01.mp4(5~10초) 또는 scene-01.png 를 넣어라. 줌 확대는 쓰지 않음."
+            "장면 클립 없음: %s. 5~10초 세로 scene-01.mp4 가 필요하다. png 정지컷으로 대체하지 말 것. 줌·검정 레터박스 없음."
             % ", ".join(missing)
         )
 

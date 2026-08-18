@@ -135,9 +135,62 @@ def _has_style_need(text: str) -> bool:
     return any(mark in blob for mark in _STYLE_NEED)
 
 
+_YOUNG_FACE = (
+    "child",
+    "teen",
+    "20s",
+    "30s",
+    "young woman",
+    "young man",
+    "youthful",
+    "little girl",
+    "little boy",
+)
+_SENIOR_FACE = (
+    "60s",
+    "70s",
+    "80s",
+    "late-60",
+    "late 60",
+    "elderly",
+    "silver-haired",
+    "silver hair",
+    "white-haired",
+)
+_AGE_DRIFT = (
+    "becomes younger",
+    "becomes older",
+    "de-age",
+    "deaged",
+    "younger version",
+    "older version",
+    "ages into",
+    "suddenly young",
+    "suddenly old",
+)
+
+
 def style_anchor(script) -> str:
     style = getattr(script, "style", None)
     return (getattr(style, "anchor", None) or "").strip()
+
+
+def style_face(script) -> str:
+    style = getattr(script, "style", None)
+    return (getattr(style, "face", None) or "").strip()
+
+
+def age_band(text: str) -> str:
+    blob = (text or "").lower()
+    young = any(mark in blob for mark in _YOUNG_FACE)
+    senior = any(mark in blob for mark in _SENIOR_FACE)
+    if young and senior:
+        return "mixed"
+    if young:
+        return "young"
+    if senior:
+        return "senior"
+    return ""
 
 
 def _hit_banned(text: str) -> str:
@@ -195,8 +248,16 @@ def validate_script(script) -> None:
     if not captions:
         errors.append("captions 필요")
     anchor = style_anchor(script)
+    face = style_face(script)
     if len(anchor) < 24:
         errors.append("style.anchor 필요")
+    if len(face) < 24:
+        errors.append("style.face 필요")
+    bands = set()
+    if age_band(face) == "mixed":
+        errors.append("style.face 나이가 섞여 있음")
+    elif age_band(face):
+        bands.add(age_band(face))
     for i, scene in enumerate(script.scenes, 1):
         caps = [c for c in (scene.captions or []) if str(c).strip()]
         if len(caps) < 2:
@@ -214,6 +275,15 @@ def validate_script(script) -> None:
             errors.append("scenes[%d] 장편 애니 화풍 단어 필요" % i)
         if anchor and anchor not in prompt:
             errors.append("scenes[%d] 프롬프트에 style.anchor 없음" % i)
+        if face and face not in prompt:
+            errors.append("scenes[%d] 프롬프트에 style.face 없음" % i)
+        if any(mark in prompt.lower() for mark in _AGE_DRIFT):
+            errors.append("scenes[%d] 얼굴 나이 변경 금지" % i)
+        band = age_band(prompt)
+        if band == "mixed":
+            errors.append("scenes[%d] 얼굴 나이가 한 장면에서 섞임" % i)
+        elif band:
+            bands.add(band)
         for cap in caps:
             if len(cap) > 28:
                 errors.append("자막이 김: %s" % cap[:20])
@@ -234,6 +304,8 @@ def validate_script(script) -> None:
         stake_blob = " ".join([last.text] + [c for c in (last.captions or []) if str(c).strip()])
         if not has_personal_stake(stake_blob):
             errors.append("마지막 장면은 내 돈(월급·이자·대출·연금)으로 끝내라")
+        if len(bands) > 1:
+            errors.append("얼굴 나이가 장면마다 다름. style.face로 고정하라")
 
     if errors:
         raise ValueError("script.json 카피: " + "; ".join(errors))
