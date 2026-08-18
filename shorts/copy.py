@@ -32,7 +32,8 @@ BANNED = (
 )
 
 GENERIC_TAGS = frozenset({"재테크", "경제", "쇼츠", "shorts", "돈이웃", "Shorts"})
-REQUIRED_TAGS = ("#돈이웃", "#쇼츠", "#shorts")
+CHANNEL_TAG_WORDS = frozenset({"돈이웃", "쇼츠", "shorts", "Shorts"})
+REQUIRED_TAGS = ()
 FORMAL_END = ("입니다", "습니다", "나왔습니다", "것입니다")
 _HOOK_END = ("요", "다", "죠", "네요", "예요", "이에요")
 _STAKE = ("내 ", "내가", "나의", "우리", "월급", "이자", "대출", "연금", "건보", "내돈")
@@ -89,6 +90,59 @@ def studio_title(title: str) -> str:
 
 def parse_hashtags(text: str) -> list:
     return [p for p in (text or "").split() if p.startswith("#") and len(p) > 1]
+
+
+def _norm_hashtag(tag: str) -> str:
+    raw = (tag or "").strip()
+    if raw.lower() == "#shorts":
+        return "#shorts"
+    return raw
+
+
+def topic_words(script) -> list:
+    out = []
+
+    def add(raw: str) -> None:
+        word = str(raw or "").strip().lstrip("#")
+        if not word or word in CHANNEL_TAG_WORDS or word in out:
+            return
+        out.append(word)
+
+    for raw in getattr(script, "tags", None) or []:
+        add(raw)
+    for raw in parse_hashtags(getattr(script, "hashtags", "") or ""):
+        add(_norm_hashtag(raw))
+    return out
+
+
+def studio_hashtags(script) -> str:
+    words = []
+    for raw in parse_hashtags(getattr(script, "hashtags", "") or ""):
+        word = _norm_hashtag(raw).lstrip("#")
+        if word and word not in CHANNEL_TAG_WORDS and word not in words:
+            words.append(word)
+    if len(words) < 5:
+        for word in topic_words(script):
+            if word not in words:
+                words.append(word)
+            if len(words) >= 5:
+                break
+    return " ".join("#" + w for w in words[:9])
+
+
+def studio_tags(script) -> list:
+    return topic_words(script)[:20]
+
+
+def missing_required_hashtags(text: str) -> list:
+    found = []
+    for raw in parse_hashtags(text):
+        word = _norm_hashtag(raw).lstrip("#")
+        if word and word not in CHANNEL_TAG_WORDS and word not in found:
+            found.append(word)
+    if len(found) < 3:
+        return ["주제"]
+    return []
 
 
 def _strip_end(text: str) -> str:
@@ -237,28 +291,42 @@ def validate_script(script) -> None:
     banned = _hit_banned(title)
     if banned:
         errors.append("제목 금지어: %s" % banned)
+    topics = topic_words(script)
+    if topics and not any(word in title for word in topics):
+        errors.append("제목에 주제가 안 보임")
 
     body = description_body(script.description)
-    if len(body) < 24:
+    if len(body) < 40:
         errors.append("설명 본문이 짧음")
     if body.splitlines()[0].strip() == title if body else False:
         errors.append("설명 첫 줄이 제목 복붙")
     banned = _hit_banned(body)
     if banned:
         errors.append("설명 금지어: %s" % banned)
-    formal_desc = sum(1 for line in re.split(r"[.!?。]\s*", body) if _ending(line) == "formal")
+    sents = [p for p in re.split(r"[.!?。]\s*", body) if p.strip()]
+    if len(sents) < 2:
+        errors.append("설명은 완결 문장 2개 이상")
+    formal_desc = sum(1 for line in sents if _ending(line) == "formal")
     if formal_desc >= 2:
         errors.append("설명에 습니다/입니다가 너무 많음")
+    lead = body[:200]
+    hits = [word for word in topics if word in lead]
+    if topics and len(hits) < min(2, len(topics)):
+        errors.append("설명 앞 200자에 주제 키워드 필요")
 
     tags = parse_hashtags(script.hashtags)
-    if not (5 <= len(tags) <= 10):
-        errors.append("해시태그는 5~10개")
-    missing = [t for t in REQUIRED_TAGS if t not in tags]
-    if missing:
-        errors.append("해시태그 필수: %s" % " ".join(missing))
+    if any(_norm_hashtag(t).lstrip("#") in CHANNEL_TAG_WORDS for t in tags):
+        errors.append("채널·쇼츠 해시태그 금지")
+    if not (5 <= len(tags) <= 9):
+        errors.append("해시태그는 주제만 5~9개")
     topic = [t for t in tags if t.lstrip("#") not in GENERIC_TAGS]
     if len(topic) < 2:
         errors.append("주제 해시태그 2개 이상")
+    raw_tags = [str(t).strip().lstrip("#") for t in (script.tags or []) if str(t).strip()]
+    if any(t in CHANNEL_TAG_WORDS for t in raw_tags):
+        errors.append("태그에 채널·쇼츠 금지")
+    if len(raw_tags) < 10:
+        errors.append("태그는 10개 이상")
 
     captions = _captions(script)
     if not captions:

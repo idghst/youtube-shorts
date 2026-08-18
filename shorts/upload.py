@@ -4,8 +4,8 @@ import logging
 from pathlib import Path
 
 from shorts.config import CLIENT_SECRETS, TOKEN_PATH
-from shorts.copy import description_body, studio_title
-from shorts.models import Script
+from shorts.copy import description_body, missing_required_hashtags, studio_hashtags, studio_tags, studio_title
+from shorts.models import Script, thumb_media_path
 
 log = logging.getLogger("shorts")
 SCOPE = ["https://www.googleapis.com/auth/youtube.upload"]
@@ -53,16 +53,15 @@ def auth() -> None:
 
 
 def description_with_disclaimer(script: Script, disclaimer: str) -> str:
-    parts = [description_body(script.description)]
-    blob = "\n".join(p for p in parts if p)
-    if script.hashtags and script.hashtags not in blob:
-        parts.append(script.hashtags)
-        blob = "\n".join(p for p in parts if p)
-    if "#Shorts" not in blob and "#shorts" not in blob:
-        parts.append("#shorts")
+    parts = [description_body(script.description), studio_hashtags(script)]
+    blob = "\n\n".join(p for p in parts if p)
     if disclaimer.strip() and disclaimer.strip() not in blob:
         parts.append(disclaimer.strip())
-    return "\n\n".join(p for p in parts if p)
+        blob = "\n\n".join(p for p in parts if p)
+    missing = missing_required_hashtags(blob)
+    if missing:
+        raise ValueError("설명에 주제 해시태그 3개 이상 필요")
+    return blob
 
 
 def upload_video(script: Script, video: Path, cfg: dict) -> str:
@@ -70,15 +69,13 @@ def upload_video(script: Script, video: Path, cfg: dict) -> str:
     creds = credentials()
     youtube = build("youtube", "v3", credentials=creds)
     title = studio_title(script.title)
-    tags = list(script.tags)
-    for extra in ("쇼츠", "재테크", "경제"):
-        if extra not in tags:
-            tags.append(extra)
+    tags = studio_tags(script)
+    desc = description_with_disclaimer(script, cfg.get("disclaimer") or "")
     body = {
         "snippet": {
             "title": title,
-            "description": description_with_disclaimer(script, cfg.get("disclaimer") or ""),
-            "tags": tags[:20],
+            "description": desc,
+            "tags": tags,
             "categoryId": str(cfg.get("youtube_category_id") or "22"),
         },
         "status": {
@@ -96,6 +93,13 @@ def upload_video(script: Script, video: Path, cfg: dict) -> str:
     video_id = resp.get("id") or ""
     if not video_id:
         raise SystemExit("업로드 응답에 id 없음")
+    thumb = thumb_media_path(video.parent)
+    if thumb is None:
+        raise SystemExit("thumb.png 없음. GenerateImage 16:9 썸네일을 넣어라.")
+    youtube.thumbnails().set(
+        videoId=video_id,
+        media_body=MediaFileUpload(str(thumb), mimetype="image/png", resumable=True),
+    ).execute()
     url = "https://youtu.be/%s" % video_id
-    log.info("업로드 완료 %s", url)
+    log.info("업로드 완료 %s 썸네일 %s", url, thumb.name)
     return video_id

@@ -14,7 +14,8 @@ from shorts.config import (
     load_config,
     youtube_channel_id,
 )
-from shorts.models import load_headline, load_script, beat_media_path
+from shorts.copy import studio_hashtags, studio_tags, studio_title
+from shorts.models import beat_media_path, load_headline, load_script, thumb_media_path
 from shorts.news import pick_job
 from shorts.render import render_job, require_ffmpeg
 from shorts.store import mark_used
@@ -78,6 +79,8 @@ def missing_agent_assets(job: Path) -> list:
     for i, _beat in enumerate(script.all_beats(), 1):
         if beat_media_path(job, i) is None:
             missing.append("beat-%02d.png (GenerateImage)" % i)
+    if thumb_media_path(job) is None:
+        missing.append("thumb.png (GenerateImage 16:9 썸네일)")
     return missing
 
 
@@ -128,6 +131,29 @@ def cmd_render(dir_arg: str | None) -> Path:
     return video
 
 
+def studio_meta(script, cfg: dict) -> dict:
+    from shorts.upload import description_with_disclaimer
+
+    desc = description_with_disclaimer(script, cfg.get("disclaimer") or "")
+    return {
+        "title": studio_title(script.title),
+        "description": desc,
+        "hashtags": studio_hashtags(script),
+        "tags": studio_tags(script),
+    }
+
+
+def cmd_meta(dir_arg: str | None) -> dict:
+    cfg = load_config()
+    job = resolve_job(dir_arg, cfg, pick_if_needed=False)
+    if not (job / "script.json").is_file():
+        raise SystemExit("script.json 없음: %s" % job)
+    script = load_script(job / "script.json")
+    meta = studio_meta(script, cfg)
+    print(json.dumps(meta, ensure_ascii=False, indent=2))
+    return meta
+
+
 def cmd_upload(dir_arg: str | None, dry_run: bool) -> None:
     cfg = load_config()
     job = resolve_job(dir_arg, cfg, pick_if_needed=False)
@@ -175,7 +201,7 @@ def cmd_run(dir_arg: str | None, dry_run: bool, channel: str | None = None) -> N
             "need": gaps,
             "next": [
                 "에이전트가 script.json 작성 (외부 LLM API 금지)",
-                "GenerateImage 로 beat-01.png … 저장. 3초당 1장. 같은 style.anchor·face·wardrobe",
+                "GenerateImage 로 beat-01.png … 와 thumb.png(16:9) 저장. 3초당 1장. 같은 style.anchor·face·wardrobe",
                 "python -m shorts run --dry-run --dir %s" % job,
             ],
         }

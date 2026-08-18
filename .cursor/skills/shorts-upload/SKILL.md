@@ -63,22 +63,26 @@ computerUse. 로그인된 시스템 크롬. Playwright MCP로 열지 마라.
 ## Studio 순서
 
 1. 위 크롬 순서로 Studio Shorts URL. 사이드바 채널명이 맞는지 확인.
-2. `만들기` → `동영상 업로드` → `파일 선택` → `browser_file_upload`에 `video.mp4` 절대경로.
-3. 제목·설명 채우기 (`#title-textarea #textbox`, `#description-textarea #textbox`).
-4. 아동용 아님 유지.
-5. `다음` → 동영상 요소 → 검토 → 공개 상태.
-6. `PUBLIC` 클릭. 버튼이 `게시`가 되면 클릭.
-7. 목록 맨 위에 제목과 `/video/<id>/edit` 확인. `https://youtube.com/shorts/<id>` 보고.
-8. `python -m shorts record --dir <잡폴더> --status uploaded --video-id <id>`. Supabase `youtube.uploads`에 채널·해시·video id를 남긴다. 이 기록 없이 끝내지 마라.
+2. 업로드 전 `.venv/bin/python -m shorts meta --dir <잡폴더>`. 출력의 title/description/hashtags/tags를 그대로 쓴다. 손으로 다시 치지 마라.
+3. `만들기` → `동영상 업로드` → `파일 선택` → `browser_file_upload`에 `video.mp4` 절대경로.
+4. 제목 = `meta.title`. 설명 = `meta.description` 전체(본문 + 주제 해시태그 + 면책). 설명란에 `#`가 3개 미만이면 다음을 누르지 마라.
+5. `자세히 보기` → `태그`에 `meta.tags` 10개 이상을 넣는다. `돈이웃`/`쇼츠`/`shorts`는 넣지 마라.
+6. 썸네일: `thumb.png`를 커스텀 썸네일로 올린다. 자동 프레임만 두고 넘어가지 마라.
+7. 아동용 아님 유지.
+8. `다음` → 동영상 요소 → 검토 → 공개 상태.
+9. `PUBLIC` 클릭. 버튼이 `게시`가 되면 클릭.
+10. 목록 맨 위에 제목과 `/video/<id>/edit` 확인. `https://youtube.com/shorts/<id>` 보고.
+11. `python -m shorts record --dir <잡폴더> --status uploaded --video-id <id>`. Supabase `youtube.uploads`에 채널·해시·video id를 남긴다. 이 기록 없이 끝내지 마라.
 
 ## 메타
 
-기존 돈이웃 Shorts와 같게.
+`.venv/bin/python -m shorts meta --dir <잡>` 출력을 그대로.
 
-- 제목: `script.title` 그대로. 해시태그 있으면 제거. 제목에 `#Shorts`를 붙이지 말 것.
-- 설명: `script.description` 본문(해시태그 줄·면책 제외) + 빈 줄 + `script.hashtags` + 빈 줄 + 면책.
-- 해시태그: `script.hashtags`. 없으면 `#돈이웃 #쇼츠 #shorts`. `#Shorts`만 있으면 `#shorts`로 맞춤.
-- 면책 문장은 설명에 이미 있으면 중복하지 말 것.
+- 제목: `meta.title`. 해시태그 있으면 제거. 제목에 `#Shorts` 금지. 주제가 보여야 한다.
+- 설명: `meta.description` 전체. 앞 200자에 주제 키워드. 음절 빠진 문장 금지. 면책은 코드가 붙인 그대로.
+- 해시태그: 주제만 5~9개. `#돈이웃` `#쇼츠` `#shorts` 금지.
+- 태그: 10개 이상. 채널·쇼츠 단어 금지.
+- 썸네일: `thumb.png` 필수. 안 올리면 업로드 미완료.
 
 ## 금지
 
@@ -86,5 +90,7 @@ computerUse. 로그인된 시스템 크롬. Playwright MCP로 열지 마라.
 - 차단 후 채팅으로만 승인 요청하고 재시도 안 함
 - offscn 영상을 돈이웃 채널에 올리기
 - 제목에 `#Shorts` 붙이기
+- `#돈이웃` `#쇼츠` `#shorts`를 설명·태그에 넣기
+- `thumb.png` 없이 게시
 - `video.mp4` 없는 잡 업로드
 - 독 크롬을 안 열고 `navigate` / 주소창 타이핑 / `google-chrome` CLI

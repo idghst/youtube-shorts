@@ -35,8 +35,8 @@ def _script() -> Script:
     return Script(
         title="가계빚 2000조, 이자만 3조 더?",
         description="영끌이랑 빚투로 가계빚이 처음 2000조를 넘겼어요. 늘어난 빚의 열 중 여덟이 주택담보대출이고, 금리가 오르면 이자만 3조가 더 붙는다는 얘기예요.",
-        tags=["가계빚", "주담대"],
-        hashtags="#가계빚 #주담대 #영끌 #금리인상 #돈이웃 #쇼츠 #shorts",
+        tags=["가계빚", "주담대", "영끌", "금리인상", "연체율", "가계부채", "주택담보대출", "이자부담", "대출한도", "빚투"],
+        hashtags="#가계빚 #주담대 #영끌 #금리인상 #연체율",
         style=Style(anchor=ANCHOR, face=FACE, wardrobe=WARDROBE, mood="dusk town"),
         scenes=[
             Scene("가계빚이 2000조를 넘겼어요", duration=12, captions=["이자가 더 붙는다고요?", "가계빚이 2000조예요"], beats=_beats(4)),
@@ -122,7 +122,20 @@ class MissingAssetsTests(unittest.TestCase):
             )
             for i in range(1, 21):
                 (job / ("beat-%02d.png" % i)).write_bytes(b"x")
+            (job / "thumb.png").write_bytes(b"x")
             self.assertEqual(missing_agent_assets(job), [])
+
+    def test_missing_thumb(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            job = Path(tmp)
+            (job / "script.json").write_text(
+                json.dumps(_script().to_json(), ensure_ascii=False),
+                encoding="utf-8",
+            )
+            for i in range(1, 21):
+                (job / ("beat-%02d.png" % i)).write_bytes(b"x")
+            gaps = missing_agent_assets(job)
+        self.assertTrue(any("thumb.png" in g for g in gaps))
 
     def test_missing_script(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -24,6 +24,9 @@ def main(argv: list | None = None) -> int:
     render_p = sub.add_parser("render", help="ffmpeg 정지컷 + 자막 + BGM (줌 없음)")
     render_p.add_argument("--dir", help="잡 폴더 out/<channel>/<job>")
 
+    meta_p = sub.add_parser("meta", help="Studio에 붙일 제목·설명·태그 출력")
+    meta_p.add_argument("--dir", help="잡 폴더 out/<channel>/<job>")
+
     upload_p = sub.add_parser("upload", help="YouTube videos.insert")
     upload_p.add_argument("--dir", help="잡 폴더 out/<channel>/<job>")
     upload_p.add_argument("--dry-run", action="store_true", help="업로드 생략")
@@ -66,6 +69,10 @@ def main(argv: list | None = None) -> int:
             from shorts.run import cmd_render
 
             cmd_render(args.dir)
+        elif args.cmd == "meta":
+            from shorts.run import cmd_meta
+
+            cmd_meta(args.dir)
         elif args.cmd == "upload":
             from shorts.run import cmd_upload
 

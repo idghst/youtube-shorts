@@ -81,8 +81,8 @@ def _ok(**overrides) -> Script:
     data = dict(
         title="가계빚 2000조, 이자만 3조 더?",
         description="영끌이랑 빚투로 가계빚이 처음 2000조를 넘겼어요. 늘어난 빚의 열 중 여덟이 주택담보대출이고, 금리가 오르면 이자만 3조가 더 붙는다는 얘기예요.",
-        tags=["가계빚", "주담대", "영끌", "금리인상"],
-        hashtags="#가계빚 #주담대 #영끌 #금리인상 #돈이웃 #쇼츠 #shorts",
+        tags=["가계빚", "주담대", "영끌", "금리인상", "연체율", "가계부채", "주택담보대출", "이자부담", "대출한도", "빚투"],
+        hashtags="#가계빚 #주담대 #영끌 #금리인상 #연체율",
         scenes=scenes,
         style=Style(anchor=ANCHOR, face=FACE, wardrobe=WARDROBE, mood="quiet dusk hillside town"),
     )
@@ -130,6 +130,26 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="가계빚이 또 늘었다는 얘기"))
         self.assertIn("숫자", str(ctx.exception))
+
+    def test_rejects_title_without_topic(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="이거 실화예요? 3"))
+        self.assertIn("주제", str(ctx.exception))
+
+    def test_rejects_channel_hashtags(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(hashtags="#가계빚 #주담대 #영끌 #금리인상 #돈이웃"))
+        self.assertIn("채널", str(ctx.exception))
+
+    def test_rejects_too_few_tags(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(tags=["가계빚", "주담대"]))
+        self.assertIn("태그", str(ctx.exception))
+
+    def test_rejects_description_without_lead_keywords(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(description="요즘 소식이 많아서 정리해 봤어요. 내 돈부터 먼저 보면 돼요."))
+        self.assertIn("200", str(ctx.exception))
 
     def test_rejects_first_caption_that_is_not_a_hook(self):
         scenes = _ok().scenes

@@ -30,9 +30,10 @@ description: Makes one Korean finance YouTube Short from RSS via local CLI plus 
 5. **설명**: 제목 다음에 `description` 본문만.
 6. **해시태그**: `hashtags`와 `tags`. 그다음 `script.json`을 저장.
 7. **이미지**: 아래 **화면** 절로 비트마다 프롬프트를 쓴 뒤, Cursor **GenerateImage** (`aspect_ratio: 9:16`) → `beat-01.png` …. 3초당 1장. 60초면 20장. 직전 컷(+ beat-01)을 레퍼런스로 얼굴·옷을 고정. 실사 사람·망가체 금지. 동영상 클립·imagegen CLI / OPENAI_API_KEY 폴백 금지.
-8. **영상**: `.venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>` → `video.mp4`. duration은 3초 배수, 합 48~60초(권장 60초/20장). 성공 시 `rendered`.
-9. **업로드**: 사용자가 `올려줘`/`업로드` 할 때, 또는 시간별 자동화일 때. **REQUIRED:** `.cursor/skills/shorts-upload/SKILL.md`.
-10. **기록**: Studio로 올렸으면 `.venv/bin/python -m shorts record --dir out/<channel>/<job> --status uploaded --video-id <id>`.
+8. **썸네일**: 아래 **썸네일** 절로 GenerateImage `aspect_ratio: 16:9` → `thumb.png`. 업로드 때 Studio에 반드시 올린다.
+9. **영상**: `.venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>` → `video.mp4`. duration은 3초 배수, 합 48~60초(권장 60초/20장). 성공 시 `rendered`.
+10. **업로드**: 사용자가 `올려줘`/`업로드` 할 때, 또는 시간별 자동화일 때. **REQUIRED:** `.cursor/skills/shorts-upload/SKILL.md`.
+11. **기록**: Studio로 올렸으면 `.venv/bin/python -m shorts record --dir out/<channel>/<job> --status uploaded --video-id <id>`.
 
 실패 시 로그만 남기고 중단.
 
@@ -43,9 +44,9 @@ description: Makes one Korean finance YouTube Short from RSS via local CLI plus 
 ```json
 {
   "title": "가계빚 2000조, 이자만 3조 더?",
-  "description": "영끌이랑 빚투로 가계빚이 처음 2000조를 넘겼어요. 늘어난 빚의 열 중 여덟이 주택담보대출이고, 금리가 오르면 이자만 3조가 더 붙는다는 얘기예요.",
-  "tags": ["가계빚", "주담대", "영끌", "금리인상", "재테크"],
-  "hashtags": "#가계빚 #주담대 #영끌 #금리인상 #돈이웃 #쇼츠 #shorts",
+  "description": "영끌이랑 빚투로 가계빚이 처음 2000조를 넘겼어요. 늘어난 빚의 열 중 여덟이 주담대고, 금리인상 되면 이자만 3조가 더 붙어요.",
+  "tags": ["가계빚", "주담대", "영끌", "금리인상", "연체율", "가계부채", "주택담보대출", "이자부담", "대출한도", "빚투"],
+  "hashtags": "#가계빚 #주담대 #영끌 #금리인상 #연체율",
   "style": {
     "anchor": "the same silver-haired Korean woman in a cream cardigan, painterly animated film, luminous dusk sky",
     "face": "same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age",
@@ -72,23 +73,25 @@ scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration`은 3초 배수, `beats` 
 
 ## 제목 (클릭·검색)
 
-- 해시태그 넣지 말 것. 12~42자.
-- **숫자 또는 물음표 필수.**
-- 헤드라인이나 첫 자막을 습니다로 옮기지 말 것.
+- 해시태그 넣지 말 것. 12~42자. 길면 줄여라.
+- **주제가 한눈에.** `tags` 중 하나가 제목에 그대로 있어야 한다. 궁금증만 있고 주제가 안 보이면 다시 쓴다.
+- 호기심·걱정·희망이 보이게. **숫자 또는 물음표 필수.**
+- 쉬운 말. 헤드라인이나 첫 자막을 습니다로 옮기지 말 것.
 - 입니다/습니다/나왔습니다 금지.
-- 예: `가계빚 2000조, 이자만 3조 더?`
+- 예: `가계빚 2000조, 이자만 3조 더?` (주제=가계빚, 숫자, 걱정)
 
 ## 설명 (검색·체류)
 
-- 본문만. 해시태그·면책은 필드/코드가 붙임.
-- 첫 줄은 제목 복붙 금지. 2~3문장: 무슨 일 + 왜 내 돈과 관련.
+- 본문만. 해시태그·면책은 `shorts meta`가 붙인다. 음절 빠진 문장 금지.
+- **앞 200자에 주제 키워드 2개 이상.** 첫 문장에 `tags` 단어를 넣어라.
+- 첫 줄은 제목 복붙 금지. 완결 문장 2~3개: 무슨 일 + 왜 내 돈.
 - 해요체. 습니다 나열 금지.
 
-## 해시태그 (노출)
+## 해시태그·태그
 
-- `hashtags` 5~10개. 구체 → 중간 → `#돈이웃 #쇼츠 #shorts`.
-- 주제 태그 2개 이상.
-- `tags`는 해시태그에서 `#` 뺀 검색어.
+- `hashtags`는 **주제만 5~9개.** `#돈이웃` `#쇼츠` `#shorts` 금지.
+- `tags`는 **10개 이상.** 채널명·쇼츠 단어 금지. Studio `자세히 보기 → 태그`에 그대로 넣는다.
+- 예: `#가계빚 #주담대 #영끌 #금리인상 #연체율`
 
 ## 대본 (유지·조회)
 
@@ -136,6 +139,19 @@ scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration`은 3초 배수, `beats` 
 - 픽사 3D·실사 사진·CCTV·스마트폰 직찍 금지.
 - imagegen CLI / OPENAI_API_KEY / GEMINI_API_KEY / FAL_KEY 금지.
 
+## 썸네일 (`thumb.png`)
+
+업로드 때 **반드시** 커스텀 썸네일을 올린다. GenerateImage `aspect_ratio: 16:9` → `<잡>/thumb.png`. 1280x720에 가깝게.
+
+같은 `style.anchor`·`style.face`·`style.wardrobe`·해부 고정. `beat-01.png`를 레퍼런스로. 실사·망가·한글·숫자·로고 금지.
+
+YouTube 썸네일 기준:
+- 주인공을 더 가까이. 배경은 단순한 한 색·한 장소.
+- 너무 복잡하면 빼고, 너무 허전하면 소품 하나만.
+- 핵심을 가리키는 화살표·동그라미 같은 시각 힌트 하나.
+- 비교면 좌우 분할. 한 화면을 어지럽게 나누지 말 것.
+- 얼굴은 편안하고 자연스럽게. 과장된 공포 표정 금지.
+
 ## BGM
 
 나레이션/`say`/외부 TTS 없음. `assets/bgm/`의 Mixkit · Pixabay Music · CC0 · YouTube Audio Library급만. 유튜브 음원 yt-dlp 금지.
@@ -153,4 +169,5 @@ scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration`은 3초 배수, `beats` 
 - `OPENAI_API_KEY` / `GEMINI_API_KEY` / `FAL_KEY`
 - imagegen CLI (`scripts/image_gen.py`)
 - 실사 사람 얼굴, 망가체, 줌 확대, 동영상 클립 생성, 얼굴 나이 들쭉날쭉, 손발 중복
+- `#돈이웃` `#쇼츠` `#shorts`, thumb.png 없이 업로드
 - 렌더 위조 (ffmpeg 없으면 중단)

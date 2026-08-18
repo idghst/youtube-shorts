@@ -208,6 +208,14 @@ def beat_media_path(job_dir: Path, index: int) -> Path | None:
     return None
 
 
+def thumb_media_path(job_dir: Path) -> Path | None:
+    for name in ("thumb.png", "thumb.jpg", "thumb.jpeg", "thumb.webp", "thumbnail.png"):
+        path = job_dir / name
+        if path.is_file() and path.stat().st_size > 0:
+            return path
+    return None
+
+
 def scene_media_path(job_dir: Path, index: int) -> Path | None:
     for suffix in (".png", ".jpg", ".jpeg", ".webp"):
         path = job_dir / ("scene-%02d%s" % (index, suffix))

@@ -26,7 +26,7 @@
 ### 파이프라인
 
 1. `.venv/bin/python -m shorts pick --channel 돈이웃` → 이전 주제 조회 후 선정, `headline.json` + `used-topics.json`
-2. 에이전트가 `style.anchor`·`style.face`·`style.wardrobe`를 고정한 뒤 대본 → 제목 → 설명 → 해시태그 순으로 `script.json`을 쓰고 GenerateImage로 `beat-01.png` … 작성. 3초당 1장. 60초면 20장. 동영상 클립은 만들지 않는다. 직전 컷을 레퍼런스로 얼굴·옷·분위기를 고정. 한 쇼츠 안은 같은 얼굴·나이·의상·화풍·이어지는 스토리. 손발 중복 금지. 장편 애니 톤. 실사 사람·망가체·줌 확대·검정 레터박스 금지. OpenAI/Gemini/FAL, imagegen CLI 금지. 해요체. 첫 자막은 훅, 마지막은 내 돈.
+2. 에이전트가 `style.anchor`·`style.face`·`style.wardrobe`를 고정한 뒤 대본 → 제목 → 설명 → 해시태그 순으로 `script.json`을 쓰고 GenerateImage로 `beat-01.png` … 와 `thumb.png`(16:9) 작성. 3초당 1장. 60초면 20장. 제목은 주제가 보이게. 설명 앞 200자에 키워드. 해시태그·태그는 주제만(`#돈이웃` `#쇼츠` `#shorts` 금지, tags 10개+). 동영상 클립은 만들지 않는다. 직전 컷을 레퍼런스로 얼굴·옷·분위기를 고정. 한 쇼츠 안은 같은 얼굴·나이·의상·화풍·이어지는 스토리. 손발 중복 금지. 장편 애니 톤. 실사 사람·망가체·줌 확대·검정 레터박스 금지. OpenAI/Gemini/FAL, imagegen CLI 금지. 해요체. 첫 자막은 훅, 마지막은 내 돈.
 3. `.venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>` → `video.mp4`. scenes 4~5개, duration은 3초 배수, 합 48~60초(권장 60초/20장).
 4. 업로드 후 `record`로 Supabase에 남겨 다음 pick이 중복을 피한다.
 
