@@ -247,12 +247,12 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
     for i, _scene in enumerate(script.scenes, 1):
         path = scene_media_path(job_dir, i)
         if path is None:
-            missing.append("scene-%02d.mp4" % i)
+            missing.append("scene-%02d.png" % i)
         else:
             media.append(path)
     if missing:
         raise SystemExit(
-            "장면 클립 없음: %s. 5~10초 세로 scene-01.mp4 가 필요하다. png 정지컷으로 대체하지 말 것. 줌·검정 레터박스 없음."
+            "장면 이미지 없음: %s. GenerateImage 로 scene-01.png … 를 넣어라. 줌·검정 레터박스 없음."
             % ", ".join(missing)
         )
 

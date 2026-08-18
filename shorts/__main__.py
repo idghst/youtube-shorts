@@ -21,7 +21,7 @@ def main(argv: list | None = None) -> int:
     )
     sub.add_parser("auth", help="YouTube OAuth (1회)")
 
-    render_p = sub.add_parser("render", help="ffmpeg 클립 이어붙임 + 자막 + BGM (줌 없음)")
+    render_p = sub.add_parser("render", help="ffmpeg 정지컷 + 자막 + BGM (줌 없음)")
     render_p.add_argument("--dir", help="잡 폴더 out/<channel>/<job>")
 
     upload_p = sub.add_parser("upload", help="YouTube videos.insert")

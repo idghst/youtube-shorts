@@ -154,7 +154,7 @@ def scene_image_path(job_dir: Path, index: int) -> Path:
 
 
 def scene_media_path(job_dir: Path, index: int) -> Path | None:
-    for suffix in (".mp4", ".webm", ".mov"):
+    for suffix in (".png", ".jpg", ".jpeg", ".webp"):
         path = job_dir / ("scene-%02d%s" % (index, suffix))
         if path.is_file() and path.stat().st_size > 0:
             return path

@@ -1,13 +1,13 @@
 ---
 name: shorts-pipeline
-description: Makes one Korean finance YouTube Short from RSS via local CLI plus Grok Imagine video clips. Use when the user asks to make a Short, 쇼츠, run the shorts pipeline, write a script.json, generate scene videos, render, or upload.
+description: Makes one Korean finance YouTube Short from RSS via local CLI plus Cursor GenerateImage. Use when the user asks to make a Short, 쇼츠, run the shorts pipeline, write a script.json, generate scene images, render, or upload.
 ---
 
 # 쇼츠 파이프라인
 
 에이전트가 하루치(헤드라인 1개 → 쇼츠 1개)를 만든다. 외부 LLM/이미지 HTTP API 금지. TTS 없음.
 
-영상은 **5~10초 클립 4~5개 이어붙임** + 화면 자막 + 무료 BGM. 렌더가 이미지를 확대(줌)하지 않는다.
+영상은 **정지 이미지** + 화면 자막 + 무료 BGM. 렌더가 이미지를 확대(줌)하지 않는다. 동영상 클립은 만들지 않는다.
 
 산출은 `out/<channel>/<job>/`. 채널 두 개: **돈이웃** (한국 재테크), **offscn** (폴더만). 기본은 돈이웃.
 
@@ -24,12 +24,12 @@ description: Makes one Korean finance YouTube Short from RSS via local CLI plus 
 저장소 루트에서. 이 순서를 건너뛰거나 한 파일에 대충 몰아 쓰지 말 것.
 
 1. **이전 주제** + **주제 선정**: `.venv/bin/python -m shorts pick --channel 돈이웃` → stdout이 잡 폴더. 시니어 관심(연금·노후·건보·상속·예적금·부동산) 우선. 숫자·삭감·인상 같은 훅이 있으면 더 앞. “쓸 헤드라인 없음”이면 중단.
-2. **이 쇼츠의 화풍 하나**: `style.anchor`와 `style.face`를 먼저 고정한다. 쇼츠마다 달라도 된다. **한 쇼츠 안 클립은 같은 얼굴·나이·옷·마을·빛이어야 한다.**
+2. **이 쇼츠의 화풍 하나**: `style.anchor`와 `style.face`를 먼저 고정한다. 쇼츠마다 달라도 된다. **한 쇼츠 안 컷은 같은 얼굴·나이·옷·마을·빛이어야 한다.**
 3. **대본**: `headline.json`과 `used-topics.json`을 보고 `script.json`의 `scenes`만 먼저 쓴다. 장면은 스토리가 이어지게. OpenAI/Gemini HTTP 금지. 이전 제목과 같은 각도·같은 훅 금지.
 4. **제목**: 대본을 본 뒤에 `title`. 대본 첫 줄을 옮기지 말 것. 숫자 또는 물음표 필수.
 5. **설명**: 제목 다음에 `description` 본문만.
 6. **해시태그**: `hashtags`와 `tags`. 그다음 `script.json`을 저장.
-7. **클립**: 아래 **화면** 절로 장면마다 프롬프트를 쓴 뒤, **Grok Imagine으로만** 5~10초 세로 영상을 만들어 `scene-01.mp4` … 로 넣는다. GenerateImage/png 정지컷으로 대체하지 말 것. 첫 클립을 레퍼런스로 나머지 얼굴을 고정. 실사 사람·망가체 금지. imagegen CLI / OPENAI_API_KEY / Runway / Kling / FAL 폴백 금지.
+7. **이미지**: 아래 **화면** 절로 장면마다 프롬프트를 쓴 뒤, Cursor **GenerateImage** (`aspect_ratio: 9:16`) → `scene-01.png` …. 첫 컷을 레퍼런스로 나머지 얼굴을 고정. 실사 사람·망가체 금지. 동영상 클립·imagegen CLI / OPENAI_API_KEY 폴백 금지.
 8. **영상**: `.venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>` → `video.mp4`. 장면 5~10초, 합 20~50초. 성공 시 `rendered`.
 9. **업로드**: 사용자가 `올려줘`/`업로드` 할 때, 또는 시간별 자동화일 때. **REQUIRED:** `.cursor/skills/shorts-upload/SKILL.md`.
 10. **기록**: Studio로 올렸으면 `.venv/bin/python -m shorts record --dir out/<channel>/<job> --status uploaded --video-id <id>`.
@@ -104,18 +104,9 @@ scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration` 5~10, 합 20~50. 대본�
 - 무음으로 3초 안에 뜻을 알게. 뉴스 용어는 쉬운 말로.
 - 숫자·핵심어만 색/굵기. 키네틱 금지.
 
-## 화면 — Grok Imagine 클립만
+## 화면 (정지 컷)
 
-장면마다 **Grok Imagine Video**로 5~10초 세로 `scene-01.mp4` … 를 만든다. png/GenerateImage 정지컷으로 끝내지 말 것. 렌더는 mp4가 있어야 돈다.
-
-도구:
-- Cursor에 Grok Imagine(영상)이 있으면 그걸 쓴다.
-- 없으면 로그인된 크롬에서 `https://grok.com/imagine` → **Video** 탭.
-- 설정: 비율 **9:16**, 길이 **6초 또는 10초**(장면 duration에 가까운 쪽, 10초 초과 금지), 모드 **Normal**.
-- 프롬프트는 그 장면 `image_prompt` 그대로.
-- 다운로드한 mp4를 잡 폴더에 `scene-01.mp4` … 로 저장.
-- Grok이 붙인 음성/BGM은 버려도 된다. 우리 렌더가 `-an` 후 로컬 BGM을 넣는다.
-- 금지: GenerateImage 최종본, imagegen CLI, Runway, Kling, Luma, FAL, OpenAI/Gemini 영상, xAI HTTP를 새로 깔아 쓰는 것.
+동영상 클립은 만들지 않는다. 장면마다 Cursor **GenerateImage** `aspect_ratio: 9:16` → `scene-01.png` ….
 
 실사 사람 금지. 망가/만화잡지/치비/효과선 금지. 프롬프트에 manga, photoreal, zoom 단어를 넣지 말 것. 디즈니·지브리·신카이 장편 **느낌**. 특정 저작권 캐릭터 금지.
 
@@ -123,17 +114,18 @@ scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration` 5~10, 합 20~50. 대본�
 
 얼굴 고정:
 - `style.face`에 나이·머리·이목구비를 잠근다. 예: `same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age`
-- 클립마다 젊어지거나 늙으면 Grok Imagine으로 다시 생성. 20s와 60s를 한 편에 섞지 마라.
-- 먼저 scene-01을 Grok Imagine 텍스트→영상으로 만든다. 첫 프레임을 뽑아서 2번째부터는 **이미지→영상**으로 같은 얼굴을 유지한다.
+- 컷마다 젊어지거나 늙으면 다시 생성. 20s와 60s를 한 편에 섞지 마라.
+- 먼저 `scene-01.png`를 만든다. 2번째부터는 `reference_image_paths`에 scene-01을 넣고 같은 얼굴을 유지한다.
 - 인물·옷·머리·마을·시간대가 바뀌면 다시 쓴다. 스토리는 같은 하루처럼 이어지게.
 
 쇼츠끼리는 화풍을 바꿔도 된다. 다음 편에 같은 구도·같은 훅 금지.
 
-프롬프트: `style.anchor`. `style.face`. [이번 장면 행동만]. `Soft theatrical animation, camera holds still.` `Vertical 9:16.`
+프롬프트: `style.anchor`. `style.face`. [이번 장면 행동만]. `Soft theatrical animation.` `Vertical 9:16.`
 
 - 한글·숫자·로고·워터마크·실존 유명인 얼굴 금지.
 - 줌 인 금지. 렌더는 `scale=1080:1920`만 한다. crop/increase/검정 레터박스/자막 검정 박스 없음.
 - 픽사 3D·실사 사진·CCTV·스마트폰 직찍 금지.
+- imagegen CLI / OPENAI_API_KEY / GEMINI_API_KEY / FAL_KEY 금지.
 
 ## BGM
 
@@ -151,5 +143,5 @@ scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration` 5~10, 합 20~50. 대본�
 - 유튜브 영상/음원 yt-dlp
 - `OPENAI_API_KEY` / `GEMINI_API_KEY` / `FAL_KEY`
 - imagegen CLI (`scripts/image_gen.py`)
-- 실사 사람 얼굴, 망가체, 줌 확대, png/GenerateImage 대체, Grok Imagine 이외 영상 생성, 얼굴 나이 들쭉날쭉
+- 실사 사람 얼굴, 망가체, 줌 확대, 동영상 클립 생성, 얼굴 나이 들쭉날쭉
 - 렌더 위조 (ffmpeg 없으면 중단)

@@ -61,17 +61,16 @@ class CaptionTests(unittest.TestCase):
 
 
 class MediaPathTests(unittest.TestCase):
-    def test_prefers_mp4_over_png(self):
+    def test_uses_png(self):
         with tempfile.TemporaryDirectory() as tmp:
             job = Path(tmp)
             (job / "scene-01.png").write_bytes(b"png")
-            (job / "scene-01.mp4").write_bytes(b"mp4")
-            self.assertEqual(scene_media_path(job, 1).name, "scene-01.mp4")
+            self.assertEqual(scene_media_path(job, 1).name, "scene-01.png")
 
-    def test_png_alone_is_ignored(self):
+    def test_mp4_alone_is_ignored(self):
         with tempfile.TemporaryDirectory() as tmp:
             job = Path(tmp)
-            (job / "scene-02.png").write_bytes(b"png")
+            (job / "scene-02.mp4").write_bytes(b"mp4")
             self.assertIsNone(scene_media_path(job, 2))
 
     def test_missing_returns_none(self):
@@ -80,7 +79,7 @@ class MediaPathTests(unittest.TestCase):
 
 
 class MissingAssetsTests(unittest.TestCase):
-    def test_missing_clip_media(self):
+    def test_missing_images(self):
         with tempfile.TemporaryDirectory() as tmp:
             job = Path(tmp)
             (job / "script.json").write_text(
@@ -88,9 +87,9 @@ class MissingAssetsTests(unittest.TestCase):
                 encoding="utf-8",
             )
             gaps = missing_agent_assets(job)
-        self.assertTrue(any("scene-01.mp4" in g for g in gaps))
+        self.assertTrue(any("scene-01.png" in g for g in gaps))
 
-    def test_png_is_not_enough(self):
+    def test_png_is_enough(self):
         with tempfile.TemporaryDirectory() as tmp:
             job = Path(tmp)
             (job / "script.json").write_text(
@@ -99,18 +98,6 @@ class MissingAssetsTests(unittest.TestCase):
             )
             for i in range(1, 5):
                 (job / ("scene-%02d.png" % i)).write_bytes(b"x")
-            gaps = missing_agent_assets(job)
-        self.assertTrue(any("scene-01.mp4" in g for g in gaps))
-
-    def test_mp4_clips_are_enough(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            job = Path(tmp)
-            (job / "script.json").write_text(
-                json.dumps(_script().to_json(), ensure_ascii=False),
-                encoding="utf-8",
-            )
-            for i in range(1, 5):
-                (job / ("scene-%02d.mp4" % i)).write_bytes(b"x")
             self.assertEqual(missing_agent_assets(job), [])
 
     def test_missing_script(self):
