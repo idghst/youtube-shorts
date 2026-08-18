@@ -39,7 +39,7 @@ def _script() -> Script:
         hashtags="#가계빚 #주담대 #영끌 #금리인상 #연체율",
         style=Style(anchor=ANCHOR, face=FACE, wardrobe=WARDROBE, mood="dusk town"),
         scenes=[
-            Scene("가계빚이 2000조를 넘겼어요", duration=12, captions=["이자가 더 붙는다고요?", "가계빚이 2000조예요"], beats=_beats(4)),
+            Scene("가계빚이 2000조를 넘겼어요", duration=12, captions=["2000조가 넘었다고요?", "가계빚이 2000조예요"], beats=_beats(4)),
             Scene("영끌과 빚투가 밀어 올렸어요", duration=12, captions=["영끌이랑 빚투가 밀었어요", "늘분의 열 중 여덟이 주담대"], beats=_beats(4)),
             Scene("한도를 넓히면 더 늘어요", duration=12, captions=["한도를 넓히면 더 늘어요", "연체는 10년 만에 최고예요"], beats=_beats(4)),
             Scene("금리가 오르면 이자만 3조", duration=12, captions=["금리 오르면 이자만", "3조가 더 붙어요"], beats=_beats(4)),
@@ -73,7 +73,7 @@ class CaptionTests(unittest.TestCase):
 
     def test_caption_follows_scene_time(self):
         scene = _script().scenes[0]
-        self.assertEqual(caption_at(scene, 1.5), "이자가 더 붙는다고요?")
+        self.assertEqual(caption_at(scene, 1.5), "2000조가 넘었다고요?")
         self.assertEqual(caption_at(scene, 7.5), "가계빚이 2000조예요")
 
 

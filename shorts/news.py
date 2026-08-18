@@ -234,7 +234,16 @@ def recent_topics(channel: str, cfg: dict | None = None, out_dir: Path | None = 
 _VIRAL = (
     "깎", "삭감", "인상", "인하", "폭탄", "미납", "체납", "고갈",
     "동결", "지급액", "보험료", "연금액", "폐지", "중단",
+    "증여", "차용", "무이자", "한도", "부모",
 )
+_HOUSE = (
+    "부모", "차용", "무이자", "한도", "증여세", "차용증",
+    "전세금", "건보료", "지급액", "가족이체",
+)
+
+
+def _house_score(headline: Headline) -> int:
+    return _count_hints(_blob(headline), _HOUSE)
 
 
 def _viral_score(headline: Headline) -> int:
@@ -267,6 +276,7 @@ def choose_headline(
         overlap = max((topic_overlap(item.title, t) for t in used), default=0)
         return (
             _senior_score(item),
+            _house_score(item),
             _viral_score(item),
             _finance_score(item),
             -overlap,
@@ -276,8 +286,9 @@ def choose_headline(
 
     chosen = max(pool, key=sort_key)
     log.info(
-        "선정 점수 senior=%d viral=%d finance=%d overlap=%d [%s] %s",
+        "선정 점수 senior=%d house=%d viral=%d finance=%d overlap=%d [%s] %s",
         _senior_score(chosen),
+        _house_score(chosen),
         _viral_score(chosen),
         _finance_score(chosen),
         max((topic_overlap(chosen.title, t) for t in used), default=0),

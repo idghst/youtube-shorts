@@ -39,7 +39,7 @@ def _ok(**overrides) -> Script:
     scenes = [
         _scene(
             "가계빚이 2000조를 넘겼어요. 이자가 더 문제예요",
-            ["이자가 더 붙는다고요?", "가계빚이 2000조예요"],
+            ["2000조가 넘었다고요?", "가계빚이 2000조예요"],
             "She reads an unmarked envelope by the window.",
             "She turns the envelope over with both hands.",
             "She looks out the dusk window, envelope at her chest.",
@@ -157,6 +157,18 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(scenes=scenes))
         self.assertIn("훅", str(ctx.exception))
+
+    def test_rejects_first_caption_without_title_number(self):
+        scenes = _ok().scenes
+        scenes[0].captions = ["이자가 더 붙는다고요?", "가계빚이 커졌어요"]
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(scenes=scenes))
+        self.assertIn("첫 자막", str(ctx.exception))
+
+    def test_rejects_title_without_household_stake(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="가계빚 2000조, 또 늘었나?"))
+        self.assertIn("내 돈", str(ctx.exception))
 
     def test_rejects_last_scene_without_personal_stake(self):
         scenes = _ok().scenes

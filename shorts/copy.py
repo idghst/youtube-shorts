@@ -36,7 +36,22 @@ CHANNEL_TAG_WORDS = frozenset({"돈이웃", "쇼츠", "shorts", "Shorts"})
 REQUIRED_TAGS = ()
 FORMAL_END = ("입니다", "습니다", "나왔습니다", "것입니다")
 _HOOK_END = ("요", "다", "죠", "네요", "예요", "이에요")
-_STAKE = ("내 ", "내가", "나의", "우리", "월급", "이자", "대출", "연금", "건보", "내돈")
+_STAKE = ("내 ", "내가", "나의", "우리", "월급", "이자", "대출", "연금", "건보", "내돈", "전세", "부모", "증여")
+_HOUSE_TITLE = (
+    "부모",
+    "전세",
+    "증여",
+    "차용",
+    "무이자",
+    "한도",
+    "건보",
+    "연금",
+    "월급",
+    "이자",
+    "보증",
+    "내 ",
+    "우리",
+)
 _PHOTO_MARK = (
     "photorealistic",
     "photoreal",
@@ -368,6 +383,8 @@ def validate_script(script) -> None:
     topics = topic_words(script)
     if topics and not any(word in title for word in topics):
         errors.append("제목에 주제가 안 보임")
+    if not any(word in title for word in _HOUSE_TITLE):
+        errors.append("제목에 내 돈 상황(전세·부모·이자·한도)이 없음")
 
     body = description_body(script.description)
     if len(body) < 40:
@@ -463,6 +480,9 @@ def validate_script(script) -> None:
             errors.append("첫 자막이 제목 복붙")
         if not is_hook(captions[0]):
             errors.append("첫 자막은 훅(질문·덜 끝난 말)")
+        title_nums = title_numbers(title)
+        if title_nums and not any(num in captions[0] for num in title_nums):
+            errors.append("첫 자막에 제목 숫자가 없음")
         if _ending(captions[0]) == "formal":
             errors.append("첫 자막을 습니다로 끝내지 말 것")
         formal_n = sum(1 for c in captions if _ending(c) == "formal")
