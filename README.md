@@ -2,7 +2,7 @@
 
 장편 애니 화풍 클립을 이어붙인 재테크 쇼츠. **대본·클립은 Cursor 에이전트**, 나머지는 로컬 CLI.
 
-외부 OpenAI/Gemini/FAL 호출 없음. TTS 없음. 영상은 5~10초 `scene-01.mp4` 클립 이어붙임 + 외곽선 자막 + 무료 BGM. **줌·검정 레터박스·png 대체 없음.** 한 편 안 얼굴·나이는 `style.face`로 고정.
+외부 OpenAI/Gemini/FAL/Runway 호출 없음. TTS 없음. 장면 클립은 **Grok Imagine Video**로만 5~10초 `scene-01.mp4`를 만든 뒤 이어붙임 + 외곽선 자막 + 무료 BGM. **줌·검정 레터박스·png 대체 없음.** 한 편 안 얼굴·나이는 `style.face`로 고정.
 
 ## 준비
 
@@ -23,7 +23,7 @@ Cursor 채팅에서 「쇼츠 만들어」→ 프로젝트 스킬 `.cursor/skill
 
 ```bash
 .venv/bin/python -m shorts pick --channel 돈이웃
-# 에이전트가 out/<channel>/<job>/script.json 작성 + scene-01.mp4 …
+# 에이전트가 out/<channel>/<job>/script.json 작성 + Grok Imagine으로 scene-01.mp4 …
 .venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>
 ```
 

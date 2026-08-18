@@ -175,7 +175,7 @@ def cmd_run(dir_arg: str | None, dry_run: bool, channel: str | None = None) -> N
             "need": gaps,
             "next": [
                 "에이전트가 script.json 작성 (외부 LLM API 금지)",
-                "장면 클립 scene-01.mp4(5~10초). png 정지컷 금지. 같은 style.anchor·style.face",
+                "Grok Imagine Video로 scene-01.mp4(5~10초, 9:16). png/GenerateImage 대체 금지. 같은 style.anchor·style.face",
                 "python -m shorts run --dry-run --dir %s" % job,
             ],
         }

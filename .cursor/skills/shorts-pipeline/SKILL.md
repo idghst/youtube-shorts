@@ -1,6 +1,6 @@
 ---
 name: shorts-pipeline
-description: Makes one Korean finance YouTube Short from RSS via local CLI plus scene clips. Use when the user asks to make a Short, 쇼츠, run the shorts pipeline, write a script.json, generate scene images/videos, render, or upload.
+description: Makes one Korean finance YouTube Short from RSS via local CLI plus Grok Imagine video clips. Use when the user asks to make a Short, 쇼츠, run the shorts pipeline, write a script.json, generate scene videos, render, or upload.
 ---
 
 # 쇼츠 파이프라인
@@ -29,7 +29,7 @@ description: Makes one Korean finance YouTube Short from RSS via local CLI plus 
 4. **제목**: 대본을 본 뒤에 `title`. 대본 첫 줄을 옮기지 말 것. 숫자 또는 물음표 필수.
 5. **설명**: 제목 다음에 `description` 본문만.
 6. **해시태그**: `hashtags`와 `tags`. 그다음 `script.json`을 저장.
-7. **클립**: 아래 **화면** 절로 장면마다 프롬프트를 쓴 뒤, **5~10초 세로 영상만** `scene-01.mp4` … 로 넣는다. png 정지컷으로 대체하지 말 것. 첫 클립을 레퍼런스로 나머지 얼굴을 고정. 실사 사람·망가체 금지. imagegen CLI / OPENAI_API_KEY 폴백 금지.
+7. **클립**: 아래 **화면** 절로 장면마다 프롬프트를 쓴 뒤, **Grok Imagine으로만** 5~10초 세로 영상을 만들어 `scene-01.mp4` … 로 넣는다. GenerateImage/png 정지컷으로 대체하지 말 것. 첫 클립을 레퍼런스로 나머지 얼굴을 고정. 실사 사람·망가체 금지. imagegen CLI / OPENAI_API_KEY / Runway / Kling / FAL 폴백 금지.
 8. **영상**: `.venv/bin/python -m shorts run --dry-run --dir out/<channel>/<job>` → `video.mp4`. 장면 5~10초, 합 20~50초. 성공 시 `rendered`.
 9. **업로드**: 사용자가 `올려줘`/`업로드` 할 때, 또는 시간별 자동화일 때. **REQUIRED:** `.cursor/skills/shorts-upload/SKILL.md`.
 10. **기록**: Studio로 올렸으면 `.venv/bin/python -m shorts record --dir out/<channel>/<job> --status uploaded --video-id <id>`.
@@ -104,9 +104,18 @@ scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration` 5~10, 합 20~50. 대본�
 - 무음으로 3초 안에 뜻을 알게. 뉴스 용어는 쉬운 말로.
 - 숫자·핵심어만 색/굵기. 키네틱 금지.
 
-## 화면 (장편 애니 클립) — 영상 우선
+## 화면 — Grok Imagine 클립만
 
-**png 정지컷으로 대체하지 말 것.** 장면마다 5~10초 세로 `scene-01.mp4` … 가 있어야 렌더가 돈다.
+장면마다 **Grok Imagine Video**로 5~10초 세로 `scene-01.mp4` … 를 만든다. png/GenerateImage 정지컷으로 끝내지 말 것. 렌더는 mp4가 있어야 돈다.
+
+도구:
+- Cursor에 Grok Imagine(영상)이 있으면 그걸 쓴다.
+- 없으면 로그인된 크롬에서 `https://grok.com/imagine` → **Video** 탭.
+- 설정: 비율 **9:16**, 길이 **6초 또는 10초**(장면 duration에 가까운 쪽, 10초 초과 금지), 모드 **Normal**.
+- 프롬프트는 그 장면 `image_prompt` 그대로.
+- 다운로드한 mp4를 잡 폴더에 `scene-01.mp4` … 로 저장.
+- Grok이 붙인 음성/BGM은 버려도 된다. 우리 렌더가 `-an` 후 로컬 BGM을 넣는다.
+- 금지: GenerateImage 최종본, imagegen CLI, Runway, Kling, Luma, FAL, OpenAI/Gemini 영상, xAI HTTP를 새로 깔아 쓰는 것.
 
 실사 사람 금지. 망가/만화잡지/치비/효과선 금지. 프롬프트에 manga, photoreal, zoom 단어를 넣지 말 것. 디즈니·지브리·신카이 장편 **느낌**. 특정 저작권 캐릭터 금지.
 
@@ -114,8 +123,8 @@ scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration` 5~10, 합 20~50. 대본�
 
 얼굴 고정:
 - `style.face`에 나이·머리·이목구비를 잠근다. 예: `same late-60s Korean woman, silver bob to the jaw, soft eye wrinkles, round cheeks, do not change age`
-- 클립마다 젊어지거나 늙으면 다시 생성. 20s와 60s를 한 편에 섞지 마라.
-- 먼저 `scene-01.mp4`를 만든다. 2번째부터는 scene-01의 첫 프레임(또는 그 파일)을 레퍼런스로 넣고 같은 얼굴을 유지한다. GenerateImage를 쓸 때도 `reference_image_paths`에 scene-01 캡처를 넣는다.
+- 클립마다 젊어지거나 늙으면 Grok Imagine으로 다시 생성. 20s와 60s를 한 편에 섞지 마라.
+- 먼저 scene-01을 Grok Imagine 텍스트→영상으로 만든다. 첫 프레임을 뽑아서 2번째부터는 **이미지→영상**으로 같은 얼굴을 유지한다.
 - 인물·옷·머리·마을·시간대가 바뀌면 다시 쓴다. 스토리는 같은 하루처럼 이어지게.
 
 쇼츠끼리는 화풍을 바꿔도 된다. 다음 편에 같은 구도·같은 훅 금지.
@@ -142,5 +151,5 @@ scenes 4~5개. 훅 + 비트 + 정리. 장면 `duration` 5~10, 합 20~50. 대본�
 - 유튜브 영상/음원 yt-dlp
 - `OPENAI_API_KEY` / `GEMINI_API_KEY` / `FAL_KEY`
 - imagegen CLI (`scripts/image_gen.py`)
-- 실사 사람 얼굴, 망가체, 줌 확대, png 정지컷 대체, 얼굴 나이 들쭉날쭉
+- 실사 사람 얼굴, 망가체, 줌 확대, png/GenerateImage 대체, Grok Imagine 이외 영상 생성, 얼굴 나이 들쭉날쭉
 - 렌더 위조 (ffmpeg 없으면 중단)
