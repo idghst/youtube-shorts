@@ -64,6 +64,61 @@ _STYLE_NEED = (
 _PUNCT = " \t.!?…,~"
 _HASH_LINE = re.compile(r"^(?:#\S+\s*)+$")
 _DIGIT = re.compile(r"\d")
+_TITLE_NUM = re.compile(r"\d+(?:\.\d+)?")
+_STORY_MOOD = (
+    "걸어가요",
+    "걸어요",
+    "올려다봐요",
+    "불빛만",
+    "창밖",
+    "골목을",
+    "벤치에",
+    "산책을",
+    "바라봐요",
+    "들고 걸어",
+    "하루를",
+    "마을을 걸",
+    "골목을 걸",
+    "창을 봐요",
+    "창가에",
+    "내려가요",
+    "서 있어요",
+    "뛰어가요",
+)
+_MESSAGE = (
+    "깎",
+    "삭감",
+    "인상",
+    "인하",
+    "줄어",
+    "늘어",
+    "늘었",
+    "늘어요",
+    "더 늘",
+    "뛰",
+    "오르",
+    "올랐",
+    "더 내",
+    "더 붙",
+    "못 ",
+    "날아",
+    "없어",
+    "부족",
+    "부담",
+    "위험",
+    "폭탄",
+    "고갈",
+    "체납",
+    "연체",
+    "빚",
+    "월급",
+    "이자",
+    "대출",
+    "연금",
+    "전세",
+    "건보",
+    "내 ",
+)
 
 
 def description_body(text: str) -> str:
@@ -116,6 +171,25 @@ def is_hook(text: str) -> bool:
 def has_number_or_question(text: str) -> bool:
     s = text or ""
     return "?" in s or bool(_DIGIT.search(s))
+
+
+def title_numbers(title: str) -> list:
+    return _TITLE_NUM.findall(title or "")
+
+
+def has_message(text: str) -> bool:
+    blob = text or ""
+    if _DIGIT.search(blob):
+        return True
+    return any(token in blob for token in _MESSAGE)
+
+
+def story_mood(text: str) -> str:
+    blob = text or ""
+    for phrase in _STORY_MOOD:
+        if phrase in blob:
+            return phrase
+    return ""
 
 
 def has_personal_stake(text: str) -> bool:
@@ -332,6 +406,21 @@ def validate_script(script) -> None:
             errors.append("마지막 장면은 내 돈(월급·이자·대출·연금)으로 끝내라")
         if len(bands) > 1:
             errors.append("얼굴 나이가 장면마다 다름. style.face로 고정하라")
+        for cap in captions:
+            mood = story_mood(cap)
+            if mood:
+                errors.append("자막이 스토리 정서: %s" % cap)
+        for num in title_numbers(title):
+            if num not in "".join(captions):
+                errors.append("제목 숫자 %s가 자막에 없음" % num)
+        scored = sum(1 for cap in captions if has_message(cap))
+        need = max(4, (len(captions) + 1) // 2)
+        if scored < need:
+            errors.append("자막이 분위기만 있고 사실·공포가 부족")
+        for i, scene in enumerate(script.scenes, 1):
+            caps = [c for c in (scene.captions or []) if str(c).strip()]
+            if caps and not any(has_message(c) for c in caps):
+                errors.append("scenes[%d] 자막에 숫자·위험·내 돈이 없음" % i)
 
     if errors:
         raise ValueError("script.json 카피: " + "; ".join(errors))
