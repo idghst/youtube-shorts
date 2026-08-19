@@ -36,7 +36,23 @@ CHANNEL_TAG_WORDS = frozenset({"돈이웃", "쇼츠", "shorts", "Shorts"})
 REQUIRED_TAGS = ()
 FORMAL_END = ("입니다", "습니다", "나왔습니다", "것입니다")
 _HOOK_END = ("요", "다", "죠", "네요", "예요", "이에요")
-_STAKE = ("내 ", "내가", "나의", "우리", "월급", "이자", "대출", "연금", "건보", "내돈", "전세", "부모", "증여")
+_STAKE = (
+    "내 ",
+    "내가",
+    "나의",
+    "우리",
+    "월급",
+    "이자",
+    "대출",
+    "연금",
+    "건보",
+    "내돈",
+    "전세",
+    "부모",
+    "증여",
+    "한도",
+    "통장",
+)
 _HOUSE_TITLE = (
     "부모",
     "전세",
@@ -49,9 +65,14 @@ _HOUSE_TITLE = (
     "월급",
     "이자",
     "보증",
+    "통장",
+    "이체",
+    "합산",
     "내 ",
     "우리",
 )
+_TITLE_OPINION = ("말지", "살지 말")
+_MONEY_UNIT = re.compile(r"\d+(?:\.\d+)?\s*(?:억|만|원|%)")
 _PHOTO_MARK = (
     "photorealistic",
     "photoreal",
@@ -242,6 +263,15 @@ def has_number_or_question(text: str) -> bool:
     return "?" in s or bool(_DIGIT.search(s))
 
 
+def title_has_money(title: str) -> bool:
+    """제목에 억·만·원·%가 숫자와 붙어야 한다. 2030·조 단위만으로는 안 된다."""
+    return bool(_MONEY_UNIT.search(title or ""))
+
+
+def title_is_opinion(title: str) -> bool:
+    return any(phrase in (title or "") for phrase in _TITLE_OPINION)
+
+
 def title_numbers(title: str) -> list:
     return _TITLE_NUM.findall(title or "")
 
@@ -375,8 +405,10 @@ def validate_script(script) -> None:
         errors.append("제목은 12~42자")
     if "입니다" in title or "습니다" in title or title.endswith("나왔습니다"):
         errors.append("제목에 입니다/습니다 금지")
-    if not has_number_or_question(title):
-        errors.append("제목에 숫자 또는 물음표 필요")
+    if not title_has_money(title):
+        errors.append("제목에 억·만·원·% 금액이 없음")
+    if title_is_opinion(title):
+        errors.append("제목이 팔지말지 의견. 한도·세금 결과로")
     banned = _hit_banned(title)
     if banned:
         errors.append("제목 금지어: %s" % banned)
@@ -483,6 +515,8 @@ def validate_script(script) -> None:
         title_nums = title_numbers(title)
         if title_nums and not any(num in captions[0] for num in title_nums):
             errors.append("첫 자막에 제목 숫자가 없음")
+        if not has_personal_stake(captions[0]):
+            errors.append("첫 자막에 내 돈(전세·부모·통장·한도)이 없음")
         if _ending(captions[0]) == "formal":
             errors.append("첫 자막을 습니다로 끝내지 말 것")
         formal_n = sum(1 for c in captions if _ending(c) == "formal")

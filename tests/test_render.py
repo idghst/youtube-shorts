@@ -33,17 +33,17 @@ def _beats(n: int) -> list:
 
 def _script() -> Script:
     return Script(
-        title="가계빚 2000조, 이자만 3조 더?",
-        description="영끌이랑 빚투로 가계빚이 처음 2000조를 넘겼어요. 늘어난 빚의 열 중 여덟이 주택담보대출이고, 금리가 오르면 이자만 3조가 더 붙는다는 얘기예요.",
-        tags=["가계빚", "주담대", "영끌", "금리인상", "연체율", "가계부채", "주택담보대출", "이자부담", "대출한도", "빚투"],
-        hashtags="#가계빚 #주담대 #영끌 #금리인상 #연체율",
+        title="전세금 부모에게 빌리면, 무이자 2억?",
+        description="전세금을 부모에게 빌리면 무이자 한도가 있어요. 차용증 없이 통장만 옮기면 증여세가 붙고, 한도는 2억까지예요.",
+        tags=["전세금", "부모", "무이자", "증여세", "차용증", "한도", "전세", "가족이체", "통장", "증여"],
+        hashtags="#전세금 #부모 #무이자 #증여세 #차용증",
         style=Style(anchor=ANCHOR, face=FACE, wardrobe=WARDROBE, mood="dusk town"),
         scenes=[
-            Scene("가계빚이 2000조를 넘겼어요", duration=12, captions=["2000조가 넘었다고요?", "가계빚이 2000조예요"], beats=_beats(4)),
-            Scene("영끌과 빚투가 밀어 올렸어요", duration=12, captions=["영끌이랑 빚투가 밀었어요", "늘분의 열 중 여덟이 주담대"], beats=_beats(4)),
-            Scene("한도를 넓히면 더 늘어요", duration=12, captions=["한도를 넓히면 더 늘어요", "연체는 10년 만에 최고예요"], beats=_beats(4)),
-            Scene("금리가 오르면 이자만 3조", duration=12, captions=["금리 오르면 이자만", "3조가 더 붙어요"], beats=_beats(4)),
-            Scene("내 이자부터 흔들려요", duration=12, captions=["빚이 월급보다 먼저 컸어요", "내 이자부터 흔들려요"], beats=_beats(4)),
+            Scene("전세금을 부모에게 빌리면 한도가 있어요", duration=12, captions=["무이자 2억까지라고요?", "전세금을 부모에게 빌리면"], beats=_beats(4)),
+            Scene("차용증 없이 옮기면 증여세가 붙어요", duration=9, captions=["차용증이 없으면 증여세예요", "한도를 넘기면 더 붙어요"], beats=_beats(3)),
+            Scene("무이자로 빌려도 한도는 2억이에요", duration=9, captions=["무이자여도 한도는 2억", "그냥 옮기면 세금이에요"], beats=_beats(3)),
+            Scene("통장만 옮기면 내 돈이 줄어요", duration=9, captions=["통장만 옮기면 세금이에요", "한도가 바로 깎여요"], beats=_beats(3)),
+            Scene("내 전세금부터 한도를 봐야 해요", duration=9, captions=["내 전세금 한도부터", "2억을 넘기면 흔들려요"], beats=_beats(3)),
         ],
     )
 
@@ -62,7 +62,7 @@ class CaptionTests(unittest.TestCase):
     def test_caption_has_no_black_bar(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "cap.png"
-            write_caption_png("가계빚 2000조요", path, width=1080)
+            write_caption_png("전세금 2억이요", path, width=1080)
             from PIL import Image
 
             img = Image.open(path).convert("RGBA")
@@ -73,8 +73,8 @@ class CaptionTests(unittest.TestCase):
 
     def test_caption_follows_scene_time(self):
         scene = _script().scenes[0]
-        self.assertEqual(caption_at(scene, 1.5), "2000조가 넘었다고요?")
-        self.assertEqual(caption_at(scene, 7.5), "가계빚이 2000조예요")
+        self.assertEqual(caption_at(scene, 1.5), "무이자 2억까지라고요?")
+        self.assertEqual(caption_at(scene, 7.5), "전세금을 부모에게 빌리면")
 
 
 class MediaPathTests(unittest.TestCase):
@@ -111,7 +111,7 @@ class MissingAssetsTests(unittest.TestCase):
             )
             gaps = missing_agent_assets(job)
         self.assertTrue(any("beat-01.png" in g for g in gaps))
-        self.assertTrue(any("beat-20.png" in g for g in gaps))
+        self.assertTrue(any("beat-16.png" in g for g in gaps))
 
     def test_png_is_enough(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -120,7 +120,7 @@ class MissingAssetsTests(unittest.TestCase):
                 json.dumps(_script().to_json(), ensure_ascii=False),
                 encoding="utf-8",
             )
-            for i in range(1, 21):
+            for i in range(1, 17):
                 (job / ("beat-%02d.png" % i)).write_bytes(b"x")
             (job / "thumb.png").write_bytes(b"x")
             self.assertEqual(missing_agent_assets(job), [])
@@ -132,7 +132,7 @@ class MissingAssetsTests(unittest.TestCase):
                 json.dumps(_script().to_json(), ensure_ascii=False),
                 encoding="utf-8",
             )
-            for i in range(1, 21):
+            for i in range(1, 17):
                 (job / ("beat-%02d.png" % i)).write_bytes(b"x")
             gaps = missing_agent_assets(job)
         self.assertTrue(any("thumb.png" in g for g in gaps))

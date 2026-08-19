@@ -239,11 +239,30 @@ _VIRAL = (
 _HOUSE = (
     "부모", "차용", "무이자", "한도", "증여세", "차용증",
     "전세금", "건보료", "지급액", "가족이체",
+    "통장", "이체", "예금보호", "isa", "주택연금", "피부양자", "합산",
 )
+_WEAK_PLACE = ("은평", "강남구", "마포", "분당", "노원", "송파", "강북")
+_WEAK_YOUTH = ("2030", "mz", "엠지", "청년층")
+_NATION_JO = re.compile(r"\d+\s*조")
 
 
 def _house_score(headline: Headline) -> int:
     return _count_hints(_blob(headline), _HOUSE)
+
+
+def _weak_news_penalty(headline: Headline) -> int:
+    """지역 이전·2030 타깃·국가 조 단위는 조회가 안 남는다. 통장·한도가 있으면 깎지 않는다."""
+    if _house_score(headline) > 0:
+        return 0
+    blob = _blob(headline)
+    n = 0
+    if any(place in blob for place in _WEAK_PLACE):
+        n += 1
+    if any(youth in blob for youth in _WEAK_YOUTH):
+        n += 1
+    if _NATION_JO.search(headline.title or ""):
+        n += 1
+    return n
 
 
 def _viral_score(headline: Headline) -> int:
@@ -261,7 +280,7 @@ def choose_headline(
     now: datetime | None = None,
     used_titles: list | None = None,
 ) -> Headline:
-    """미사용 헤드라인 중 시니어 관심 → 숫자/손실 훅 → 금융 키워드 → 이전 주제와 안 겹침 → 시간대 매체 → 최신 순."""
+    """미사용 헤드라인 중 통장·한도·이체 → 시니어 관심 → 지역/2030/조 단위 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
     if not unused:
         raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
     prefer = _preferred_sources(now)
@@ -275,8 +294,9 @@ def choose_headline(
     def sort_key(item: Headline):
         overlap = max((topic_overlap(item.title, t) for t in used), default=0)
         return (
-            _senior_score(item),
             _house_score(item),
+            _senior_score(item),
+            -_weak_news_penalty(item),
             _viral_score(item),
             _finance_score(item),
             -overlap,
@@ -286,9 +306,10 @@ def choose_headline(
 
     chosen = max(pool, key=sort_key)
     log.info(
-        "선정 점수 senior=%d house=%d viral=%d finance=%d overlap=%d [%s] %s",
-        _senior_score(chosen),
+        "선정 점수 house=%d senior=%d weak=%d viral=%d finance=%d overlap=%d [%s] %s",
         _house_score(chosen),
+        _senior_score(chosen),
+        _weak_news_penalty(chosen),
         _viral_score(chosen),
         _finance_score(chosen),
         max((topic_overlap(chosen.title, t) for t in used), default=0),

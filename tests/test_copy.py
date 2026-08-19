@@ -38,51 +38,47 @@ def _scene(text: str, captions: list, *actions: str) -> Scene:
 def _ok(**overrides) -> Script:
     scenes = [
         _scene(
-            "가계빚이 2000조를 넘겼어요. 이자가 더 문제예요",
-            ["2000조가 넘었다고요?", "가계빚이 2000조예요"],
+            "전세금을 부모에게 빌리면 한도가 있어요",
+            ["무이자 2억까지라고요?", "전세금을 부모에게 빌리면"],
             "She reads an unmarked envelope by the window.",
             "She turns the envelope over with both hands.",
             "She looks out the dusk window, envelope at her chest.",
             "She steps back from the window, still holding the letter.",
         ),
         _scene(
-            "영끌과 빚투가 밀어 올렸어요",
-            ["영끌이랑 빚투가 밀었어요", "늘분의 열 중 여덟이 주담대"],
+            "차용증 없이 옮기면 증여세가 붙어요",
+            ["차용증이 없으면 증여세예요", "한도를 넘기면 더 붙어요"],
             "She sits at the wooden table with the envelope.",
             "She opens the envelope with two hands.",
             "She reads the letter under the lamp.",
-            "She sets the letter down, both hands on the table.",
         ),
         _scene(
-            "한도를 넓히면 더 늘 수 있어요",
-            ["한도를 넓히면 더 늘어요", "연체는 10년 만에 최고예요"],
+            "무이자로 빌려도 한도는 2억이에요",
+            ["무이자여도 한도는 2억", "그냥 옮기면 세금이에요"],
             "She puts on the same cream cardigan at the door.",
             "She walks down wet dusk streets holding the letter.",
             "She pauses under a streetlamp, letter in one hand.",
-            "She looks at glowing shop windows in the same clothes.",
         ),
         _scene(
-            "금리가 오르면 이자만 3조가 더 붙어요",
-            ["금리 오르면 이자만", "3조가 더 붙어요"],
+            "통장만 옮기면 내 돈이 줄어요",
+            ["통장만 옮기면 세금이에요", "한도가 바로 깎여요"],
             "She climbs the wet hillside path.",
             "City lights reflect on puddles as she pauses.",
             "She looks down at the town from the hill.",
-            "She holds the letter against the wind with two hands.",
         ),
         _scene(
-            "빚이 월급보다 먼저 커지면 흔들려요",
-            ["빚이 월급보다 먼저 컸어요", "내 이자부터 흔들려요"],
+            "내 전세금부터 한도를 봐야 해요",
+            ["내 전세금 한도부터", "2억을 넘기면 흔들려요"],
             "She looks at the hillside town, one hand on her chest.",
             "Same face, same cardigan, dusk town behind her.",
             "She looks at the letter one last time.",
-            "She walks toward the glowing windows in the same clothes.",
         ),
     ]
     data = dict(
-        title="가계빚 2000조, 이자만 3조 더?",
-        description="영끌이랑 빚투로 가계빚이 처음 2000조를 넘겼어요. 늘어난 빚의 열 중 여덟이 주택담보대출이고, 금리가 오르면 이자만 3조가 더 붙는다는 얘기예요.",
-        tags=["가계빚", "주담대", "영끌", "금리인상", "연체율", "가계부채", "주택담보대출", "이자부담", "대출한도", "빚투"],
-        hashtags="#가계빚 #주담대 #영끌 #금리인상 #연체율",
+        title="전세금 부모에게 빌리면, 무이자 2억?",
+        description="전세금을 부모에게 빌리면 무이자 한도가 있어요. 차용증 없이 통장만 옮기면 증여세가 붙고, 한도는 2억까지예요.",
+        tags=["전세금", "부모", "무이자", "증여세", "차용증", "한도", "전세", "가족이체", "통장", "증여"],
+        hashtags="#전세금 #부모 #무이자 #증여세 #차용증",
         scenes=scenes,
         style=Style(anchor=ANCHOR, face=FACE, wardrobe=WARDROBE, mood="quiet dusk hillside town"),
     )
@@ -95,18 +91,18 @@ class CopyValidateTests(unittest.TestCase):
         validate_script(_ok())
 
     def test_rejects_formal_title_and_meta(self):
-        script = _ok(title="가계빚이 사상 처음으로 2000조를 넘었습니다")
+        script = _ok(title="전세금을 부모에게 빌리면 무이자 2억입니다")
         with self.assertRaises(ValueError) as ctx:
             validate_script(script)
         self.assertIn("입니다", str(ctx.exception))
 
     def test_rejects_hashtag_in_title(self):
         with self.assertRaises(ValueError):
-            validate_script(_ok(title="가계빚 2000조 #Shorts"))
+            validate_script(_ok(title="전세금 부모 무이자 2억 #Shorts"))
 
     def test_rejects_copied_first_caption(self):
         scenes = _ok().scenes
-        scenes[0].captions = ["가계빚 2000조, 이자만 3조 더?", "이자가 더 문제예요"]
+        scenes[0].captions = ["전세금 부모에게 빌리면, 무이자 2억?", "한도가 더 문제예요"]
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(scenes=scenes))
         self.assertIn("첫 자막", str(ctx.exception))
@@ -126,19 +122,29 @@ class CopyValidateTests(unittest.TestCase):
             validate_script(_ok(scenes=scenes))
         self.assertIn("습니다", str(ctx.exception))
 
-    def test_rejects_title_without_number_or_question(self):
+    def test_rejects_title_without_money_unit(self):
         with self.assertRaises(ValueError) as ctx:
-            validate_script(_ok(title="가계빚이 또 늘었다는 얘기"))
-        self.assertIn("숫자", str(ctx.exception))
+            validate_script(_ok(title="전세금 부모에게 빌리면, 은평으로?"))
+        self.assertIn("억", str(ctx.exception))
+
+    def test_rejects_year_only_title_number(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="전세금 부모 2030, 은평으로?"))
+        self.assertIn("억", str(ctx.exception))
+
+    def test_rejects_opinion_title(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="전세금 부모 2억, 팔지 말지?"))
+        self.assertIn("의견", str(ctx.exception))
 
     def test_rejects_title_without_topic(self):
         with self.assertRaises(ValueError) as ctx:
-            validate_script(_ok(title="이거 실화예요? 3"))
+            validate_script(_ok(title="이거 실화예요? 3억"))
         self.assertIn("주제", str(ctx.exception))
 
     def test_rejects_channel_hashtags(self):
         with self.assertRaises(ValueError) as ctx:
-            validate_script(_ok(hashtags="#가계빚 #주담대 #영끌 #금리인상 #돈이웃"))
+            validate_script(_ok(hashtags="#전세금 #부모 #무이자 #증여세 #돈이웃"))
         self.assertIn("채널", str(ctx.exception))
 
     def test_rejects_too_few_tags(self):
@@ -153,21 +159,34 @@ class CopyValidateTests(unittest.TestCase):
 
     def test_rejects_first_caption_that_is_not_a_hook(self):
         scenes = _ok().scenes
-        scenes[0].captions = ["가계빚이 2000조예요", "이자가 더 문제예요"]
+        scenes[0].captions = ["전세금이 2억이에요", "한도가 더 문제예요"]
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(scenes=scenes))
         self.assertIn("훅", str(ctx.exception))
 
     def test_rejects_first_caption_without_title_number(self):
         scenes = _ok().scenes
-        scenes[0].captions = ["이자가 더 붙는다고요?", "가계빚이 커졌어요"]
+        scenes[0].captions = ["전세금이 더 붙는다고요?", "한도가 커졌어요"]
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(scenes=scenes))
         self.assertIn("첫 자막", str(ctx.exception))
 
+    def test_rejects_first_caption_without_personal_stake(self):
+        scenes = _ok().scenes
+        scenes[0].captions = ["2억이 넘었다고요?", "숫자가 커졌어요"]
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(scenes=scenes))
+        self.assertIn("내 돈", str(ctx.exception))
+
     def test_rejects_title_without_household_stake(self):
         with self.assertRaises(ValueError) as ctx:
-            validate_script(_ok(title="가계빚 2000조, 또 늘었나?"))
+            validate_script(
+                _ok(
+                    title="가계빚 2000억, 또 늘었나?",
+                    tags=["가계빚", "주담대", "영끌", "금리인상", "연체율", "가계부채", "주택담보대출", "이자부담", "대출한도", "빚투"],
+                    hashtags="#가계빚 #주담대 #영끌 #금리인상 #연체율",
+                )
+            )
         self.assertIn("내 돈", str(ctx.exception))
 
     def test_rejects_last_scene_without_personal_stake(self):
@@ -211,7 +230,7 @@ class CopyValidateTests(unittest.TestCase):
             self.assertEqual(loaded.style.anchor, ANCHOR)
             self.assertEqual(loaded.style.face, FACE)
             self.assertEqual(loaded.style.wardrobe, WARDROBE)
-            self.assertEqual(len(loaded.all_beats()), 20)
+            self.assertEqual(len(loaded.all_beats()), 16)
             self.assertIn(ANCHOR, loaded.scenes[0].beats[0].image_prompt)
             self.assertIn(FACE, loaded.scenes[0].beats[0].image_prompt)
             self.assertIn(ANATOMY_LOCK, loaded.scenes[0].beats[0].image_prompt)
@@ -277,8 +296,8 @@ class CopyValidateTests(unittest.TestCase):
 
     def test_rejects_title_number_missing_from_captions(self):
         scenes = _ok().scenes
-        scenes[0].captions = ["이자가 더 붙는다고요?", "가계빚이 또 늘었어요"]
-        scenes[3].captions = ["금리 오르면 이자만", "부담이 더 커져요"]
+        scenes[0].captions = ["전세금이 더 붙는다고요?", "한도가 또 늘었어요"]
+        scenes[3].captions = ["통장만 옮기면 세금이에요", "부담이 더 커져요"]
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(scenes=scenes))
         self.assertIn("제목 숫자", str(ctx.exception))

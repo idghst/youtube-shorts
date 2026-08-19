@@ -249,8 +249,8 @@ def render_job(script: Script, job_dir: Path, cfg: dict) -> Path:
     height = int(cfg.get("height") or 1920)
     fps = int(cfg.get("fps") or 30)
     duration = script.total_duration()
-    if not (48 <= duration <= 60):
-        raise SystemExit("장면 duration 합은 48~60초 (지금 %.1f)" % duration)
+    if not (45 <= duration <= 51):
+        raise SystemExit("장면 duration 합은 45~51초 (지금 %.1f). 권장 48초" % duration)
     bgm = resolve_bgm(cfg)
     volume = float(cfg.get("bgm_volume") or 0.32)
 

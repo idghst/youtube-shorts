@@ -8,6 +8,7 @@ from shorts.news import (
     _finance_score,
     _house_score,
     _senior_score,
+    _weak_news_penalty,
     choose_headline,
     headline_hash,
     topic_overlap,
@@ -120,6 +121,21 @@ class ChooseHeadlineTests(unittest.TestCase):
         punch = _h("국민연금 보험료 9% 인상 검토")
         chosen = choose_headline([plain, punch], now=datetime(2026, 8, 17, 9))
         self.assertEqual(chosen.title, punch.title)
+
+    def test_house_limit_beats_senior_national_stat(self):
+        nation = _h("퇴직연금 적립금 500조, 30%가 20년째 방치")
+        house = _h("예금 보호 1억, 같은 은행은 통장 합산")
+        self.assertGreater(_house_score(house), _house_score(nation))
+        self.assertGreater(_weak_news_penalty(nation), 0)
+        chosen = choose_headline([nation, house], now=datetime(2026, 8, 17, 9))
+        self.assertEqual(chosen.title, house.title)
+
+    def test_place_youth_news_loses_to_parent_jeonse(self):
+        place = _h("전세난에 지친 2030, 은평으로 몰리나")
+        house = _h("부모에게 전세금 빌리면 증여세·무이자 한도")
+        self.assertGreater(_weak_news_penalty(place), 0)
+        chosen = choose_headline([place, house], now=datetime(2026, 8, 17, 9))
+        self.assertEqual(chosen.title, house.title)
 
 
 if __name__ == "__main__":

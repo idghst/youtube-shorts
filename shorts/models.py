@@ -164,10 +164,10 @@ def load_script(path: Path) -> Script:
         raise ValueError("scenes 는 4~5개")
     total = sum(s.duration for s in scenes)
     nbeat = sum(len(s.beats) for s in scenes)
-    if not (48 <= total <= 60):
-        raise ValueError("장면 duration 합은 48~60초 (지금 %.1f)" % total)
-    if not (16 <= nbeat <= 20):
-        raise ValueError("이미지는 16~20장 (지금 %d). 3초당 1장" % nbeat)
+    if not (45 <= total <= 51):
+        raise ValueError("장면 duration 합은 45~51초 (지금 %.1f). 권장 48초. 60초 넘으면 Shorts에서 밀림" % total)
+    if not (15 <= nbeat <= 17):
+        raise ValueError("이미지는 15~17장 (지금 %d). 권장 16장. 3초당 1장" % nbeat)
     raw_style = data.get("style") or {}
     if raw_style and not isinstance(raw_style, dict):
         raise ValueError("style 은 객체")
