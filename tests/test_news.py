@@ -8,6 +8,7 @@ from shorts.news import (
     _finance_score,
     _house_score,
     _senior_score,
+    _same_hook,
     _weak_news_penalty,
     choose_headline,
     headline_hash,
@@ -136,6 +137,34 @@ class ChooseHeadlineTests(unittest.TestCase):
         self.assertGreater(_weak_news_penalty(place), 0)
         chosen = choose_headline([place, house], now=datetime(2026, 8, 17, 9))
         self.assertEqual(chosen.title, house.title)
+
+    def test_skips_same_isa_limit_amount(self):
+        used = ["ISA 남은 한도 2000만 원, 내년에 사라지나"]
+        remake = _h("ISA 통장 한도, 이제 연 2000만 원?")
+        other = _h("예금 보호 1억, 같은 은행은 통장 합산")
+        self.assertTrue(_same_hook(remake.title, used[0]))
+        chosen = choose_headline([remake, other], now=datetime(2026, 8, 17, 9), used_titles=used)
+        self.assertEqual(chosen.title, other.title)
+
+    def test_same_digits_different_unit_is_not_remake(self):
+        self.assertFalse(
+            _same_hook(
+                "전세금 부모에게 빌리면, 무이자 2억?",
+                "전세금 미반환, 2만 원 차이면",
+            )
+        )
+        self.assertFalse(
+            _same_hook(
+                "ISA 남은 한도 2000만 원, 내년에 사라지나",
+                "VISA 카드 한도 2000만 원",
+            )
+        )
+
+    def test_rate_only_headline_is_penalized(self):
+        rate = _h("변동 주담대 이자, 연 6%로 상승")
+        tax = _h("IRP 해지하면 16.5% 세금")
+        self.assertGreater(_weak_news_penalty(rate), 0)
+        self.assertEqual(_weak_news_penalty(tax), 0)
 
 
 if __name__ == "__main__":

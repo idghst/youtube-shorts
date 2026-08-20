@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from shorts.copy import description_body, studio_title, validate_script
+from shorts.copy import description_body, studio_title, title_has_money, validate_script
 from shorts.models import ANATOMY_LOCK, Beat, Scene, Script, Style, load_script
 
 ANCHOR = (
@@ -136,6 +136,30 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="전세금 부모 2억, 팔지 말지?"))
         self.assertIn("의견", str(ctx.exception))
+
+    def test_rejects_sale_hypothesis_title(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="내 집 팔면 양도세, 2억이 9억?"))
+        self.assertIn("의견", str(ctx.exception))
+
+    def test_rejects_youth_cohort_title(self):
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="전세난에 지친 2030, 은평으로 2억?"))
+        self.assertIn("2030", str(ctx.exception))
+
+    def test_rejects_man_myeong_as_money(self):
+        self.assertFalse(title_has_money("2030년 국민연금 1000만 명, 내 금액부터"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="국민연금 1000만 명, 내 한도부터"))
+        self.assertIn("억", str(ctx.exception))
+
+    def test_rejects_man_without_won(self):
+        self.assertFalse(title_has_money("전세 3만 줄고, 월세 5만이 늘면?"))
+        self.assertFalse(title_has_money("변동 주담대 이자, 연 6%?"))
+        self.assertTrue(title_has_money("전세금 부모에게 빌리면, 무이자 2억?"))
+        self.assertTrue(title_has_money("자녀 통장에 5000만 원, 그냥 옮기면 세금"))
+        self.assertTrue(title_has_money("IRP 깨면 16.5% 세금, 55세 연금은 3.3%"))
+        self.assertTrue(title_has_money("전세금 부모에게 빌리면, 무이자는 2억1700만까지"))
 
     def test_rejects_title_without_topic(self):
         with self.assertRaises(ValueError) as ctx:

@@ -71,8 +71,14 @@ _HOUSE_TITLE = (
     "내 ",
     "우리",
 )
-_TITLE_OPINION = ("말지", "살지 말")
-_MONEY_UNIT = re.compile(r"\d+(?:\.\d+)?\s*(?:억|만|원|%)")
+_TITLE_OPINION = ("말지", "살지 말", "팔면", "어디 맡")
+_YOUTH_COHORT = re.compile(r"2030(?!년)|(?<![가-힣A-Za-z])mz(?![가-힣A-Za-z])|엠지|청년층", re.I)
+_MONEY_EOK = re.compile(r"\d+(?:\.\d+)?\s*억(?:\s*\d+(?:\.\d+)?\s*만)?")
+_MONEY_MAN_WON = re.compile(r"\d+(?:\.\d+)?\s*만\s*원")
+_MONEY_WON = re.compile(r"\d+(?:\.\d+)?\s*원")
+_MONEY_PCT = re.compile(r"\d+(?:\.\d+)?\s*%")
+_NOT_MONEY_MAN = re.compile(r"\d+(?:\.\d+)?\s*만\s*(?:명|가구|채|세대|건)")
+_PCT_STAKE = ("세금", "한도", "건보", "증여", "이체", "통장", "연금")
 _PHOTO_MARK = (
     "photorealistic",
     "photoreal",
@@ -264,12 +270,23 @@ def has_number_or_question(text: str) -> bool:
 
 
 def title_has_money(title: str) -> bool:
-    """제목에 억·만·원·%가 숫자와 붙어야 한다. 2030·조 단위만으로는 안 된다."""
-    return bool(_MONEY_UNIT.search(title or ""))
+    """제목에 억, 만 원, 원, 또는 세금·한도 %가 있어야 한다. 만 명·연 N%만으로는 안 된다."""
+    text = title or ""
+    if _NOT_MONEY_MAN.search(text):
+        text = _NOT_MONEY_MAN.sub(" ", text)
+    if _MONEY_EOK.search(text) or _MONEY_MAN_WON.search(text) or _MONEY_WON.search(text):
+        return True
+    if _MONEY_PCT.search(text) and any(word in text for word in _PCT_STAKE):
+        return True
+    return False
 
 
 def title_is_opinion(title: str) -> bool:
     return any(phrase in (title or "") for phrase in _TITLE_OPINION)
+
+
+def title_is_youth(title: str) -> bool:
+    return bool(_YOUTH_COHORT.search(title or ""))
 
 
 def title_numbers(title: str) -> list:
@@ -406,9 +423,11 @@ def validate_script(script) -> None:
     if "입니다" in title or "습니다" in title or title.endswith("나왔습니다"):
         errors.append("제목에 입니다/습니다 금지")
     if not title_has_money(title):
-        errors.append("제목에 억·만·원·% 금액이 없음")
+        errors.append("제목에 억·만 원·세금% 금액이 없음")
     if title_is_opinion(title):
         errors.append("제목이 팔지말지 의견. 한도·세금 결과로")
+    if title_is_youth(title):
+        errors.append("제목이 2030·MZ 타깃. 시니어 한도로")
     banned = _hit_banned(title)
     if banned:
         errors.append("제목 금지어: %s" % banned)

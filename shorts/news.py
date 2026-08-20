@@ -244,6 +244,12 @@ _HOUSE = (
 _WEAK_PLACE = ("은평", "강남구", "마포", "분당", "노원", "송파", "강북")
 _WEAK_YOUTH = ("2030", "mz", "엠지", "청년층")
 _NATION_JO = re.compile(r"\d+\s*조")
+_RATE_ONLY = re.compile(r"연\s*\d+(?:\.\d+)?\s*%")
+_HOOK_CORE = (
+    "전세금", "예금보호", "증여세", "차용증", "무이자", "피부양자", "가족이체", "종부세",
+)
+_HOOK_AMOUNT = re.compile(r"(\d+(?:\.\d+)?)\s*(억|만|원)")
+_ISA_TOKEN = re.compile(r"(?<![a-z])isa(?![a-z])", re.I)
 
 
 def _house_score(headline: Headline) -> int:
@@ -251,7 +257,7 @@ def _house_score(headline: Headline) -> int:
 
 
 def _weak_news_penalty(headline: Headline) -> int:
-    """지역 이전·2030 타깃·국가 조 단위는 조회가 안 남는다. 통장·한도가 있으면 깎지 않는다."""
+    """지역 이전·2030 타깃·국가 조·연 N%만 있는 금리는 조회가 안 남는다. 통장·한도가 있으면 깎지 않는다."""
     if _house_score(headline) > 0:
         return 0
     blob = _blob(headline)
@@ -262,7 +268,33 @@ def _weak_news_penalty(headline: Headline) -> int:
         n += 1
     if _NATION_JO.search(headline.title or ""):
         n += 1
+    title = headline.title or ""
+    if _RATE_ONLY.search(title) and not any(
+        word in blob for word in ("세금", "한도", "통장", "이체", "만 원", "만원")
+    ):
+        n += 1
     return n
+
+
+def _hook_cores(text: str) -> set:
+    blob = text or ""
+    cores = {key for key in _HOOK_CORE if key in blob}
+    if _ISA_TOKEN.search(blob):
+        cores.add("isa")
+    return cores
+
+
+def _hook_amounts(text: str) -> set:
+    return set(_HOOK_AMOUNT.findall(text or ""))
+
+
+def _same_hook(a: str, b: str) -> bool:
+    """같은 한도 주제 + 같은 숫자는 각도만 바꿔도 재탕이다."""
+    cores = _hook_cores(a) & _hook_cores(b)
+    if not cores:
+        return False
+    nums = _hook_amounts(a) & _hook_amounts(b)
+    return bool(nums)
 
 
 def _viral_score(headline: Headline) -> int:
@@ -272,7 +304,10 @@ def _viral_score(headline: Headline) -> int:
 
 
 def _too_similar(headline: Headline, used_titles: list) -> bool:
-    return any(topic_overlap(headline.title, title) >= 3 for title in used_titles)
+    title = headline.title
+    return any(
+        topic_overlap(title, used) >= 3 or _same_hook(title, used) for used in used_titles
+    )
 
 
 def choose_headline(
@@ -280,7 +315,7 @@ def choose_headline(
     now: datetime | None = None,
     used_titles: list | None = None,
 ) -> Headline:
-    """미사용 헤드라인 중 통장·한도·이체 → 시니어 관심 → 지역/2030/조 단위 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
+    """미사용 헤드라인 중 통장·한도·이체 → 시니어 관심 → 지역/2030/조/연% 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
     if not unused:
         raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
     prefer = _preferred_sources(now)
