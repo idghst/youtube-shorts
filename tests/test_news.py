@@ -167,5 +167,34 @@ class ChooseHeadlineTests(unittest.TestCase):
         self.assertEqual(_weak_news_penalty(tax), 0)
 
 
+class RemoteTitlesTests(unittest.TestCase):
+    def test_recent_topics_includes_supabase_titles(self):
+        from unittest.mock import patch
+
+        from shorts.news import recent_topics
+
+        with patch("shorts.news.recent_titles", return_value=["로컬만"]):
+            with patch("shorts.news.supabase_ready", return_value=True):
+                with patch(
+                    "shorts.news.call_rpc",
+                    return_value=["예금 보호 1억, 같은 은행은 통장 합산", "로컬만"],
+                ):
+                    with patch("shorts.news.channel_dir") as fake_dir:
+                        fake_dir.return_value.is_dir.return_value = False
+                        titles = recent_topics("돈이웃")
+        self.assertEqual(
+            titles,
+            ["로컬만", "예금 보호 1억, 같은 은행은 통장 합산"],
+        )
+
+    def test_remote_titles_skip_when_supabase_off(self):
+        from unittest.mock import patch
+
+        from shorts.news import _remote_titles
+
+        with patch("shorts.news.supabase_ready", return_value=False):
+            self.assertEqual(_remote_titles("돈이웃"), [])
+
+
 if __name__ == "__main__":
     unittest.main()

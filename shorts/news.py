@@ -14,7 +14,7 @@ from urllib.request import Request, urlopen
 
 from shorts.config import DEFAULT_CHANNEL, OUT_DIR, channel_dir, ensure_dirs, youtube_channel_id
 from shorts.models import Headline, slugify
-from shorts.store import mark_used, recent_titles, try_claim, used_hashes
+from shorts.store import call_rpc, mark_used, recent_titles, supabase_ready, try_claim, used_hashes
 
 log = logging.getLogger("shorts")
 UA = "Mozilla/5.0 (compatible; shorts/0.1; +local)"
@@ -210,8 +210,31 @@ def topic_overlap(a: str, b: str) -> int:
     return len(topic_tokens(a) & topic_tokens(b))
 
 
+def _remote_titles(channel: str, cfg: dict | None = None) -> list:
+    """Supabase youtube.uploads 제목. 로컬 sqlite만 보면 used-topics가 빈다."""
+    if not supabase_ready(cfg):
+        return []
+    try:
+        remote = call_rpc("youtube_recent_titles", {"p_channel_key": channel}, cfg=cfg)
+    except SystemExit:
+        log.warning("youtube_recent_titles 실패. 로컬 제목만 본다.")
+        return []
+    if not isinstance(remote, list):
+        return []
+    out = []
+    for item in remote:
+        if isinstance(item, dict):
+            title = str(item.get("title") or "").strip()
+        else:
+            title = str(item or "").strip()
+        if title:
+            out.append(title)
+    return out
+
+
 def recent_topics(channel: str, cfg: dict | None = None, out_dir: Path | None = None) -> list:
     titles = list(recent_titles(channel))
+    titles.extend(_remote_titles(channel, cfg=cfg))
     root = Path(out_dir) / channel if out_dir else channel_dir(channel)
     if root.is_dir():
         for path in sorted(root.glob("*/headline.json"), reverse=True):
