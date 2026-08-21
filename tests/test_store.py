@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from shorts.models import Headline
 from shorts.news import claimed_hashes, headline_hash, pick_job, write_job
-from shorts.store import connect, mark_used, try_claim, used_hashes
+from shorts.store import connect, mark_used, recent_titles, try_claim, used_hashes
 
 
 def _h(title: str, source: str = "hankyung_finance") -> Headline:
@@ -79,6 +79,8 @@ class RpcStoreTests(unittest.TestCase):
                 return payload["p_headline_hash"] != "aa" * 32
             if name == "youtube_upsert_upload":
                 return "00000000-0000-0000-0000-000000000001"
+            if name == "youtube_recent_titles":
+                return ["전세금 HUG에 맡기고 집주인은 월세 받는다", "주부 신용대출, 한도 2000만 원?"]
             raise AssertionError(name)
 
         import shorts.store as store
@@ -92,6 +94,18 @@ class RpcStoreTests(unittest.TestCase):
             hashes = used_hashes("돈이웃", path=db, cfg={"supabase": {"url": "http://x", "publishable_key": "k"}})
         self.assertIn("aa" * 32, hashes)
         self.assertEqual(self.calls[0][0], "youtube_claimed_hashes")
+        self.assertEqual(self.calls[0][1]["p_channel_key"], "돈이웃")
+
+    def test_recent_titles_merges_remote(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "shorts.db"
+            titles = recent_titles(
+                "돈이웃",
+                path=db,
+                cfg={"supabase": {"url": "http://x", "publishable_key": "k"}},
+            )
+        self.assertIn("전세금 HUG에 맡기고 집주인은 월세 받는다", titles)
+        self.assertEqual(self.calls[0][0], "youtube_recent_titles")
         self.assertEqual(self.calls[0][1]["p_channel_key"], "돈이웃")
 
     def test_try_claim_false_when_taken(self):

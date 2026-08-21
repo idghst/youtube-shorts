@@ -95,8 +95,41 @@ def _sqlite_titles(channel: str, path: Path) -> list:
     return titles
 
 
-def recent_titles(channel: str, path: Path = DB_PATH) -> list:
-    return _sqlite_titles(channel, path)
+def _remote_titles(channel: str, cfg: dict | None = None) -> list:
+    if not supabase_ready(cfg):
+        return []
+    remote = call_rpc("youtube_recent_titles", {"p_channel_key": channel}, cfg=cfg)
+    if remote is None:
+        return []
+    if not isinstance(remote, list):
+        raise SystemExit("youtube_recent_titles 응답이 배열이 아님")
+    out = []
+    for item in remote:
+        if isinstance(item, str):
+            text = item.strip()
+        elif isinstance(item, dict):
+            text = str(item.get("title") or "").strip()
+        else:
+            text = ""
+        if text:
+            out.append(text)
+    return out
+
+
+def recent_titles(channel: str, path: Path = DB_PATH, cfg: dict | None = None) -> list:
+    """로컬 sqlite + Supabase youtube_recent_titles. sqlite만 보면 전세 시세 재탕을 다시 고른다."""
+    titles = _sqlite_titles(channel, path)
+    seen = set(titles)
+    try:
+        remote = _remote_titles(channel, cfg=cfg)
+    except SystemExit as exc:
+        log.warning("youtube_recent_titles 실패. 로컬 제목만 본다: %s", exc)
+        return titles
+    for title in remote:
+        if title not in seen:
+            seen.add(title)
+            titles.append(title)
+    return titles
 
 
 def _sqlite_hashes(channel: str, path: Path) -> set:
