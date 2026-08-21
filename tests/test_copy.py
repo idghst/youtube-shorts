@@ -5,7 +5,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from shorts.copy import description_body, studio_title, title_has_money, validate_script
+from shorts.copy import (
+    description_body,
+    studio_title,
+    title_has_money,
+    title_is_index,
+    title_is_price_news,
+    validate_script,
+)
 from shorts.models import ANATOMY_LOCK, Beat, Scene, Script, Style, load_script
 
 ANCHOR = (
@@ -160,6 +167,23 @@ class CopyValidateTests(unittest.TestCase):
         self.assertTrue(title_has_money("자녀 통장에 5000만 원, 그냥 옮기면 세금"))
         self.assertTrue(title_has_money("IRP 깨면 16.5% 세금, 55세 연금은 3.3%"))
         self.assertTrue(title_has_money("전세금 부모에게 빌리면, 무이자는 2억1700만까지"))
+        self.assertTrue(title_has_money("내 전세 월세, 74만 원이 53만?"))
+        self.assertTrue(title_has_money("3억 주담대 이자, 한 달 200만 원?"))
+
+    def test_rejects_index_return_title(self):
+        self.assertTrue(title_is_index("내 퇴직연금, 코스피 56%를 못 따라가요?"))
+        self.assertFalse(title_is_index("IRP 깨면 16.5% 세금, 55세 연금은 3.3%"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="내 퇴직연금, 코스피 56%를 못 따라가요?"))
+        self.assertIn("코스피", str(ctx.exception))
+
+    def test_rejects_jeonse_price_news_title(self):
+        self.assertTrue(title_is_price_news("내 전셋값, 2년 새 7800만 원?"))
+        self.assertFalse(title_is_price_news("내 전세 월세, 74만 원이 53만?"))
+        self.assertFalse(title_is_price_news("전세금 부모에게 빌리면, 무이자 2억?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="내 전셋값, 2년 새 7800만 원?"))
+        self.assertIn("시세", str(ctx.exception))
 
     def test_rejects_title_without_topic(self):
         with self.assertRaises(ValueError) as ctx:

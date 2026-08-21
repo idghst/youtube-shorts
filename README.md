@@ -40,7 +40,7 @@ AUTO_PUBLISH=1 .venv/bin/python -m shorts run --dir out/<channel>/<job>
 .venv/bin/python -m shorts auth
 ```
 
-길이는 `script.json`의 `scenes[].duration` 합 (45~51초, 3초 배수). 권장 48초·이미지 16장. 60초를 넘기면 Shorts 선반에서 밀린다. 제목은 억·만 원 + 한도·세금 결과. 같은 한도+숫자 재탕·팔면·만 명 금지. 한 쇼츠 안 컷은 같은 `style.anchor`·`style.face`·`style.wardrobe`. 업로드 메타는 `.venv/bin/python -m shorts meta --dir <잡>`. 주제 해시태그 5~9개, 태그 10개 이상, `thumb.png` 필수. `#돈이웃` `#쇼츠` `#shorts`는 넣지 않는다.
+길이는 `script.json`의 `scenes[].duration` 합 (45~51초, 3초 배수). 권장 48초·이미지 16장. 60초를 넘기면 Shorts 선반에서 밀린다. 제목은 억·만 원 + 한도·세금·월세 결과. 같은 한도·월세+숫자 재탕·팔면·만 명·코스피·전셋값 시세 금지. 한 쇼츠 안 컷은 같은 `style.anchor`·`style.face`·`style.wardrobe`. 업로드 메타는 `.venv/bin/python -m shorts meta --dir <잡>`. 주제 해시태그 5~9개, 태그 10개 이상, `thumb.png` 필수. `#돈이웃` `#쇼츠` `#shorts`는 넣지 않는다.
 
 흐름: Supabase 이전 주제 → 선정 → 화풍 고정 → 대본 → 제목 → 설명 → 해시태그 → 이미지 → 렌더 → 업로드 → Supabase 기록.
 

@@ -166,6 +166,29 @@ class ChooseHeadlineTests(unittest.TestCase):
         self.assertGreater(_weak_news_penalty(rate), 0)
         self.assertEqual(_weak_news_penalty(tax), 0)
 
+    def test_index_return_headline_loses_to_jeonse_wolse(self):
+        index = _h("코스피 56% 올랐는데 내 연금은 왜, 디폴트옵션")
+        house = _h("전세금 HUG에 맡기고 집주인은 월세 받는다")
+        self.assertGreater(_weak_news_penalty(index), 0)
+        self.assertGreater(_house_score(house), _house_score(index))
+        chosen = choose_headline([index, house], now=datetime(2026, 8, 20, 12))
+        self.assertEqual(chosen.title, house.title)
+
+    def test_jeonse_price_news_loses_to_wolse_cash(self):
+        price = _h("집주인 전화올까…세입자 덮친 실거주, 전셋값 2년 새 7800만")
+        house = _h("전세금 HUG에 맡기고 집주인은 월세 받는다")
+        self.assertGreater(_weak_news_penalty(price), 0)
+        chosen = choose_headline([price, house], now=datetime(2026, 8, 20, 9))
+        self.assertEqual(chosen.title, house.title)
+
+    def test_skips_same_wolse_amount(self):
+        used = ["내 전세 월세, 74만 원이 53만?"]
+        remake = _h("전세금 맡기면 월세 74만 원이 집주인 통장")
+        other = _h("예금 보호 1억, 같은 은행은 통장 합산")
+        self.assertTrue(_same_hook(remake.title, used[0]))
+        chosen = choose_headline([remake, other], now=datetime(2026, 8, 20, 21), used_titles=used)
+        self.assertEqual(chosen.title, other.title)
+
 
 if __name__ == "__main__":
     unittest.main()

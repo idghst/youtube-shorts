@@ -240,13 +240,18 @@ _HOUSE = (
     "부모", "차용", "무이자", "한도", "증여세", "차용증",
     "전세금", "건보료", "지급액", "가족이체",
     "통장", "이체", "예금보호", "isa", "주택연금", "피부양자", "합산",
+    "월세",
 )
 _WEAK_PLACE = ("은평", "강남구", "마포", "분당", "노원", "송파", "강북")
 _WEAK_YOUTH = ("2030", "mz", "엠지", "청년층")
+_MARKET_INDEX = ("코스피", "코스닥", "나스닥", "다우", "닛케이", "따라가")
+_PRICE_NEWS = ("전셋값", "집값", "시세", "2년 새")
+_PRICE_STAKE = ("한도", "세금", "이체", "월세", "무이자", "합산", "증여", "종부세")
 _NATION_JO = re.compile(r"\d+\s*조")
 _RATE_ONLY = re.compile(r"연\s*\d+(?:\.\d+)?\s*%")
 _HOOK_CORE = (
     "전세금", "예금보호", "증여세", "차용증", "무이자", "피부양자", "가족이체", "종부세",
+    "월세",
 )
 _HOOK_AMOUNT = re.compile(r"(\d+(?:\.\d+)?)\s*(억|만|원)")
 _ISA_TOKEN = re.compile(r"(?<![a-z])isa(?![a-z])", re.I)
@@ -257,20 +262,25 @@ def _house_score(headline: Headline) -> int:
 
 
 def _weak_news_penalty(headline: Headline) -> int:
-    """지역 이전·2030 타깃·국가 조·연 N%만 있는 금리는 조회가 안 남는다. 통장·한도가 있으면 깎지 않는다."""
-    if _house_score(headline) > 0:
-        return 0
+    """지역 이전·2030 타깃·국가 조·연 N%·지수 수익률·전셋값 시세는 조회가 안 남는다. 통장·한도가 있으면 지역·조는 깎지 않는다."""
     blob = _blob(headline)
-    n = 0
-    if any(place in blob for place in _WEAK_PLACE):
-        n += 1
-    if any(youth in blob for youth in _WEAK_YOUTH):
-        n += 1
-    if _NATION_JO.search(headline.title or ""):
-        n += 1
     title = headline.title or ""
-    if _RATE_ONLY.search(title) and not any(
-        word in blob for word in ("세금", "한도", "통장", "이체", "만 원", "만원")
+    n = 0
+    if _house_score(headline) == 0:
+        if any(place in blob for place in _WEAK_PLACE):
+            n += 1
+        if any(youth in blob for youth in _WEAK_YOUTH):
+            n += 1
+        if _NATION_JO.search(title):
+            n += 1
+        if _RATE_ONLY.search(title) and not any(
+            word in blob for word in ("세금", "한도", "통장", "이체", "만 원", "만원")
+        ):
+            n += 1
+    if any(word in blob for word in _MARKET_INDEX):
+        n += 1
+    if any(word in title for word in _PRICE_NEWS) and not any(
+        word in blob for word in _PRICE_STAKE
     ):
         n += 1
     return n
@@ -315,7 +325,7 @@ def choose_headline(
     now: datetime | None = None,
     used_titles: list | None = None,
 ) -> Headline:
-    """미사용 헤드라인 중 통장·한도·이체 → 시니어 관심 → 지역/2030/조/연% 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
+    """미사용 헤드라인 중 통장·한도·이체·월세 → 시니어 관심 → 지역/2030/조/연%/코스피/시세 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
     if not unused:
         raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
     prefer = _preferred_sources(now)
