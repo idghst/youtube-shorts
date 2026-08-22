@@ -153,12 +153,28 @@ class ChooseHeadlineTests(unittest.TestCase):
                 "전세금 미반환, 2만 원 차이면",
             )
         )
-        self.assertFalse(
-            _same_hook(
-                "ISA 남은 한도 2000만 원, 내년에 사라지나",
-                "VISA 카드 한도 2000만 원",
-            )
-        )
+
+    def test_skips_same_limit_amount(self):
+        used = ["ISA 남은 한도 2000만 원, 내년에 사라지나"]
+        remake = _h("주부 신용대출, 한도 2000만 원?")
+        other = _h("예금 보호 1억, 같은 은행은 통장 합산")
+        self.assertTrue(_same_hook(remake.title, used[0]))
+        chosen = choose_headline([remake, other], now=datetime(2026, 8, 21, 3), used_titles=used)
+        self.assertEqual(chosen.title, other.title)
+
+    def test_rate_promo_headline_loses_to_wolse_cash(self):
+        promo = _h("국민은행 연 12% 역대급 적금, 선착순 월 30만 한도")
+        house = _h("전세금 HUG에 맡기고 집주인은 월세 받는다")
+        self.assertGreater(_weak_news_penalty(promo), 0)
+        chosen = choose_headline([promo, house], now=datetime(2026, 8, 21, 9))
+        self.assertEqual(chosen.title, house.title)
+
+    def test_workplace_benefit_loses_to_parent_jeonse(self):
+        work = _h("육아휴직급여 안들어왔어요, 회사 확인서 빠지면 0원")
+        house = _h("부모에게 전세금 빌리면 증여세·무이자 한도")
+        self.assertGreater(_weak_news_penalty(work), 0)
+        chosen = choose_headline([work, house], now=datetime(2026, 8, 21, 21))
+        self.assertEqual(chosen.title, house.title)
 
     def test_rate_only_headline_is_penalized(self):
         rate = _h("변동 주담대 이자, 연 6%로 상승")

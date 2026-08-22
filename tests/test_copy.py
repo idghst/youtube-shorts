@@ -11,6 +11,8 @@ from shorts.copy import (
     title_has_money,
     title_is_index,
     title_is_price_news,
+    title_is_rate_promo,
+    title_is_workplace,
     validate_script,
 )
 from shorts.models import ANATOMY_LOCK, Beat, Scene, Script, Style, load_script
@@ -184,6 +186,22 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="내 전셋값, 2년 새 7800만 원?"))
         self.assertIn("시세", str(ctx.exception))
+
+    def test_rejects_rate_promo_title(self):
+        self.assertTrue(title_is_rate_promo("적금 한도 월 30만 원, 연 12%?"))
+        self.assertTrue(title_is_rate_promo("변동 주담대 이자, 연 6%?"))
+        self.assertFalse(title_is_rate_promo("IRP 깨면 16.5% 세금, 55세 연금은 3.3%"))
+        self.assertFalse(title_is_rate_promo("내 전세 월세, 74만 원이 53만?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="적금 한도 월 30만 원, 연 12%?"))
+        self.assertIn("연%", str(ctx.exception))
+
+    def test_rejects_workplace_benefit_title(self):
+        self.assertTrue(title_is_workplace("내 육아휴직급여, 확인서 없으면 0원?"))
+        self.assertFalse(title_is_workplace("전세금 부모에게 빌리면, 무이자 2억?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="내 육아휴직급여, 확인서 없으면 0원?"))
+        self.assertIn("육아", str(ctx.exception))
 
     def test_rejects_title_without_topic(self):
         with self.assertRaises(ValueError) as ctx:

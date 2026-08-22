@@ -13,6 +13,7 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from shorts.config import DEFAULT_CHANNEL, OUT_DIR, channel_dir, ensure_dirs, youtube_channel_id
+from shorts.copy import title_is_rate_promo, title_is_workplace
 from shorts.models import Headline, slugify
 from shorts.store import mark_used, recent_titles, try_claim, used_hashes
 
@@ -251,7 +252,7 @@ _NATION_JO = re.compile(r"\d+\s*조")
 _RATE_ONLY = re.compile(r"연\s*\d+(?:\.\d+)?\s*%")
 _HOOK_CORE = (
     "전세금", "예금보호", "증여세", "차용증", "무이자", "피부양자", "가족이체", "종부세",
-    "월세",
+    "월세", "한도",
 )
 _HOOK_AMOUNT = re.compile(r"(\d+(?:\.\d+)?)\s*(억|만|원)")
 _ISA_TOKEN = re.compile(r"(?<![a-z])isa(?![a-z])", re.I)
@@ -262,7 +263,7 @@ def _house_score(headline: Headline) -> int:
 
 
 def _weak_news_penalty(headline: Headline) -> int:
-    """지역 이전·2030 타깃·국가 조·연 N%·지수 수익률·전셋값 시세는 조회가 안 남는다. 통장·한도가 있으면 지역·조는 깎지 않는다."""
+    """지역 이전·2030 타깃·국가 조·연 N% 상품·육아휴직·지수·전셋값 시세는 조회가 안 남는다. 통장·한도가 있으면 지역·조는 깎지 않는다."""
     blob = _blob(headline)
     title = headline.title or ""
     n = 0
@@ -277,6 +278,10 @@ def _weak_news_penalty(headline: Headline) -> int:
             word in blob for word in ("세금", "한도", "통장", "이체", "만 원", "만원")
         ):
             n += 1
+    if title_is_rate_promo(title) or title_is_rate_promo(blob):
+        n += 1
+    if title_is_workplace(title) or title_is_workplace(blob):
+        n += 1
     if any(word in blob for word in _MARKET_INDEX):
         n += 1
     if any(word in title for word in _PRICE_NEWS) and not any(
@@ -299,7 +304,7 @@ def _hook_amounts(text: str) -> set:
 
 
 def _same_hook(a: str, b: str) -> bool:
-    """같은 한도 주제 + 같은 숫자는 각도만 바꿔도 재탕이다."""
+    """같은 한도·월세 주제 + 같은 숫자는 각도만 바꿔도 재탕이다. ISA든 신용대출이든 2000만이면 같다."""
     cores = _hook_cores(a) & _hook_cores(b)
     if not cores:
         return False
@@ -325,7 +330,7 @@ def choose_headline(
     now: datetime | None = None,
     used_titles: list | None = None,
 ) -> Headline:
-    """미사용 헤드라인 중 통장·한도·이체·월세 → 시니어 관심 → 지역/2030/조/연%/코스피/시세 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
+    """미사용 헤드라인 중 통장·한도·이체·월세 → 시니어 관심 → 지역/2030/조/연%상품/육아휴직/코스피/시세 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
     if not unused:
         raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
     prefer = _preferred_sources(now)

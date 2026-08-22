@@ -78,6 +78,10 @@ _YOUTH_COHORT = re.compile(r"2030(?!년)|(?<![가-힣A-Za-z])mz(?![가-힣A-Za-z
 _INDEX_RETURN = ("코스피", "코스닥", "나스닥", "다우", "닛케이", "따라가")
 _PRICE_NEWS = ("전셋값", "집값", "시세", "2년 새")
 _PRICE_STAKE = ("한도", "세금", "이체", "월세", "무이자", "합산", "증여", "종부세")
+_RATE_ONLY = re.compile(r"연\s*\d+(?:\.\d+)?\s*%")
+_RATE_PRODUCT = ("적금", "예금", "주담대", "신용대출")
+_RATE_STAKE = ("세금", "이체", "월세", "증여", "무이자", "합산", "종부세")
+_WORKPLACE = ("육아휴직",)
 _MONEY_EOK = re.compile(r"\d+(?:\.\d+)?\s*억(?:\s*\d+(?:\.\d+)?\s*만)?")
 _MONEY_MAN_WON = re.compile(r"\d+(?:\.\d+)?\s*만\s*원")
 _MONEY_WON = re.compile(r"\d+(?:\.\d+)?\s*원")
@@ -309,6 +313,23 @@ def title_is_price_news(title: str) -> bool:
     return True
 
 
+def title_is_rate_promo(title: str) -> bool:
+    """적금 연 12%처럼 금리 상품. 한도·만 원이 있어도 세금·월세 결과가 아니면 실패다."""
+    text = title or ""
+    if not _RATE_ONLY.search(text):
+        return False
+    if not any(word in text for word in _RATE_PRODUCT):
+        return False
+    if any(word in text for word in _RATE_STAKE):
+        return False
+    return True
+
+
+def title_is_workplace(title: str) -> bool:
+    """육아휴직급여 0원처럼 직장 복지. 통장·한도·월세가 아니다."""
+    return any(word in (title or "") for word in _WORKPLACE)
+
+
 def title_numbers(title: str) -> list:
     return _TITLE_NUM.findall(title or "")
 
@@ -452,6 +473,10 @@ def validate_script(script) -> None:
         errors.append("제목이 코스피·지수 수익률. 한도·세금 결과로")
     if title_is_price_news(title):
         errors.append("제목이 전셋값·시세 뉴스. 한도·세금·월세 결과로")
+    if title_is_rate_promo(title):
+        errors.append("제목이 적금·대출 연%. 한도·세금·월세 결과로")
+    if title_is_workplace(title):
+        errors.append("제목이 육아휴직 직장복지. 통장·한도·월세로")
     banned = _hit_banned(title)
     if banned:
         errors.append("제목 금지어: %s" % banned)
