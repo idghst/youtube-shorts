@@ -13,7 +13,12 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from shorts.config import DEFAULT_CHANNEL, OUT_DIR, channel_dir, ensure_dirs, youtube_channel_id
-from shorts.copy import title_is_rate_promo, title_is_workplace
+from shorts.copy import (
+    title_is_bare_limit,
+    title_is_pension_double,
+    title_is_rate_promo,
+    title_is_workplace,
+)
 from shorts.models import Headline, slugify
 from shorts.store import mark_used, recent_titles, try_claim, used_hashes
 
@@ -167,6 +172,7 @@ _SENIOR_CORE = (
 _SENIOR_NEAR = (
     "예금", "적금", "예적금", "배당", "부동산", "전세", "종부세", "재산세",
     "irp", "공시가격", "공시지가",
+    "이자", "주담대",
     "dividend", "deposit",
 )
 
@@ -241,7 +247,7 @@ _HOUSE = (
     "부모", "차용", "무이자", "한도", "증여세", "차용증",
     "전세금", "건보료", "지급액", "가족이체",
     "통장", "이체", "예금보호", "isa", "주택연금", "피부양자", "합산",
-    "월세",
+    "월세", "이자",
 )
 _WEAK_PLACE = ("은평", "강남구", "마포", "분당", "노원", "송파", "강북")
 _WEAK_YOUTH = ("2030", "mz", "엠지", "청년층")
@@ -252,18 +258,35 @@ _NATION_JO = re.compile(r"\d+\s*조")
 _RATE_ONLY = re.compile(r"연\s*\d+(?:\.\d+)?\s*%")
 _HOOK_CORE = (
     "전세금", "예금보호", "증여세", "차용증", "무이자", "피부양자", "가족이체", "종부세",
-    "월세", "한도",
+    "월세", "한도", "이자",
 )
 _HOOK_AMOUNT = re.compile(r"(\d+(?:\.\d+)?)\s*(억|만|원)")
 _ISA_TOKEN = re.compile(r"(?<![a-z])isa(?![a-z])", re.I)
 
 
+def _rejected_house(title: str, blob: str) -> bool:
+    return (
+        title_is_rate_promo(title)
+        or title_is_rate_promo(blob)
+        or title_is_workplace(title)
+        or title_is_workplace(blob)
+        or title_is_bare_limit(title)
+        or title_is_bare_limit(blob)
+        or title_is_pension_double(title)
+        or title_is_pension_double(blob)
+    )
+
+
 def _house_score(headline: Headline) -> int:
-    return _count_hints(_blob(headline), _HOUSE)
+    blob = _blob(headline)
+    title = headline.title or ""
+    if _rejected_house(title, blob):
+        return 0
+    return _count_hints(blob, _HOUSE)
 
 
 def _weak_news_penalty(headline: Headline) -> int:
-    """지역 이전·2030 타깃·국가 조·연 N% 상품·육아휴직·지수·전셋값 시세는 조회가 안 남는다. 통장·한도가 있으면 지역·조는 깎지 않는다."""
+    """지역 이전·2030 타깃·국가 조·연 N% 상품·육아휴직·한도만·연금 두 배·지수·전셋값 시세는 조회가 안 남는다. 통장·한도가 있으면 지역·조는 깎지 않는다."""
     blob = _blob(headline)
     title = headline.title or ""
     n = 0
@@ -281,6 +304,10 @@ def _weak_news_penalty(headline: Headline) -> int:
     if title_is_rate_promo(title) or title_is_rate_promo(blob):
         n += 1
     if title_is_workplace(title) or title_is_workplace(blob):
+        n += 1
+    if title_is_bare_limit(title) or title_is_bare_limit(blob):
+        n += 1
+    if title_is_pension_double(title) or title_is_pension_double(blob):
         n += 1
     if any(word in blob for word in _MARKET_INDEX):
         n += 1
@@ -303,13 +330,29 @@ def _hook_amounts(text: str) -> set:
     return set(_HOOK_AMOUNT.findall(text or ""))
 
 
+def _amount_near(left: set, right: set) -> bool:
+    """같은 단위면 만은 ±5까지 재탕. 74만과 73만은 같다."""
+    for na, ua in left:
+        for nb, ub in right:
+            if ua != ub:
+                continue
+            try:
+                fa, fb = float(na), float(nb)
+            except ValueError:
+                continue
+            if fa == fb:
+                return True
+            if ua == "만" and abs(fa - fb) <= 5:
+                return True
+    return False
+
+
 def _same_hook(a: str, b: str) -> bool:
-    """같은 한도·월세 주제 + 같은 숫자는 각도만 바꿔도 재탕이다. ISA든 신용대출이든 2000만이면 같다."""
+    """같은 한도·월세·이자 주제 + 같은(또는 가까운 만) 숫자는 각도만 바꿔도 재탕이다. ISA든 신용대출이든 2000만이면 같다."""
     cores = _hook_cores(a) & _hook_cores(b)
     if not cores:
         return False
-    nums = _hook_amounts(a) & _hook_amounts(b)
-    return bool(nums)
+    return _amount_near(_hook_amounts(a), _hook_amounts(b))
 
 
 def _viral_score(headline: Headline) -> int:
@@ -330,14 +373,18 @@ def choose_headline(
     now: datetime | None = None,
     used_titles: list | None = None,
 ) -> Headline:
-    """미사용 헤드라인 중 통장·한도·이체·월세 → 시니어 관심 → 지역/2030/조/연%상품/육아휴직/코스피/시세 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
+    """미사용 헤드라인 중 통장·한도·이체·월세·이자 만 원 → 시니어 관심 → 지역/2030/조/연%상품/육아휴직/한도만/연금두배/코스피/시세 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
     if not unused:
         raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
     prefer = _preferred_sources(now)
     used = [t for t in (used_titles or []) if t]
     fresh = [h for h in unused if not _too_similar(h, used)] if used else unused
     pool_src = fresh or unused
-    senior_hits = [h for h in pool_src if _senior_score(h) > 0]
+    senior_hits = [
+        h
+        for h in pool_src
+        if _senior_score(h) > 0 and not _rejected_house(h.title or "", _blob(h))
+    ]
     finance_hits = [h for h in pool_src if _finance_score(h) > 0]
     pool = senior_hits or finance_hits or pool_src
 

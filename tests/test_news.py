@@ -205,6 +205,39 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([remake, other], now=datetime(2026, 8, 20, 21), used_titles=used)
         self.assertEqual(chosen.title, other.title)
 
+    def test_skips_near_wolse_amount(self):
+        used = ["내 전세 월세, 74만 원이 53만?"]
+        remake = _h("전세금 2억 맡기면, 월세 73만 원이 집주인")
+        other = _h("예금 보호 1억, 같은 은행은 통장 합산")
+        self.assertTrue(_same_hook(remake.title, used[0]))
+        chosen = choose_headline([remake, other], now=datetime(2026, 8, 22, 21), used_titles=used)
+        self.assertEqual(chosen.title, other.title)
+
+    def test_interest_cash_beats_bare_limit(self):
+        bare = _h("내 통장 한도, 월 50만 원 입금")
+        cash = _h("5억 주담대 이자, 연 140만 원")
+        self.assertGreater(_weak_news_penalty(bare), 0)
+        self.assertEqual(_house_score(bare), 0)
+        self.assertGreater(_house_score(cash), 0)
+        chosen = choose_headline([bare, cash], now=datetime(2026, 8, 22, 9))
+        self.assertEqual(chosen.title, cash.title)
+
+    def test_pension_double_loses_to_interest_cash(self):
+        pension = _h("국민연금 1개월 내고 2배, 연금액 200%")
+        cash = _h("5억 주담대 이자, 연 140만 원")
+        self.assertGreater(_weak_news_penalty(pension), 0)
+        self.assertEqual(_house_score(pension), 0)
+        chosen = choose_headline([pension, cash], now=datetime(2026, 8, 22, 15))
+        self.assertEqual(chosen.title, cash.title)
+
+    def test_rate_promo_does_not_get_house_from_interest_word(self):
+        rate = _h("변동 주담대 이자, 연 6%로 상승")
+        cash = _h("5억 주담대 이자, 연 140만 원")
+        self.assertEqual(_house_score(rate), 0)
+        self.assertGreater(_house_score(cash), _house_score(rate))
+        chosen = choose_headline([rate, cash], now=datetime(2026, 8, 22, 12))
+        self.assertEqual(chosen.title, cash.title)
+
 
 if __name__ == "__main__":
     unittest.main()

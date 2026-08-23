@@ -11,6 +11,8 @@ from shorts.copy import (
     title_has_money,
     title_is_index,
     title_is_price_news,
+    title_is_bare_limit,
+    title_is_pension_double,
     title_is_rate_promo,
     title_is_workplace,
     validate_script,
@@ -202,6 +204,26 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="내 육아휴직급여, 확인서 없으면 0원?"))
         self.assertIn("육아", str(ctx.exception))
+
+    def test_rejects_bare_limit_title(self):
+        self.assertTrue(title_is_bare_limit("내 통장 한도, 월 50만 원?"))
+        self.assertTrue(title_is_bare_limit("주부 신용대출, 한도 2000만 원?"))
+        self.assertFalse(title_is_bare_limit("ISA 남은 한도 2000만 원, 내년에 사라지나"))
+        self.assertFalse(title_is_bare_limit("자녀 통장에 5000만 원, 그냥 옮기면 세금"))
+        self.assertFalse(title_is_bare_limit("전세금 부모에게 빌리면, 무이자 2억?"))
+        self.assertFalse(title_is_bare_limit("5억 주담대 이자, 연 140만 원?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="내 통장 한도, 월 50만 원?"))
+        self.assertIn("한도", str(ctx.exception))
+
+    def test_rejects_pension_double_title(self):
+        self.assertTrue(title_is_pension_double("국민연금 1개월 내고 2배, 연금액 200%?"))
+        self.assertTrue(title_is_pension_double("부모 월 9만 원, 자녀 연금이 두 배?"))
+        self.assertFalse(title_is_pension_double("IRP 깨면 16.5% 세금, 55세 연금은 3.3%"))
+        self.assertFalse(title_is_pension_double("5억 주담대 이자, 연 140만 원?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="국민연금 1개월 내고 2배, 연금액 200%?"))
+        self.assertIn("연금", str(ctx.exception))
 
     def test_rejects_title_without_topic(self):
         with self.assertRaises(ValueError) as ctx:

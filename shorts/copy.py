@@ -82,6 +82,19 @@ _RATE_ONLY = re.compile(r"연\s*\d+(?:\.\d+)?\s*%")
 _RATE_PRODUCT = ("적금", "예금", "주담대", "신용대출")
 _RATE_STAKE = ("세금", "이체", "월세", "증여", "무이자", "합산", "종부세")
 _WORKPLACE = ("육아휴직",)
+_LIMIT_RESULT = (
+    "세금",
+    "소멸",
+    "사라",
+    "합산",
+    "이체",
+    "증여",
+    "무이자",
+    "종부세",
+    "월세",
+)
+_LIMIT_COMPARE = re.compile(r"\d+(?:\.\d+)?\s*만(?:\s*원)?.{0,12}\d+(?:\.\d+)?\s*만")
+_PENSION_DOUBLE = re.compile(r"두\s*배|2배|200\s*%")
 _MONEY_EOK = re.compile(r"\d+(?:\.\d+)?\s*억(?:\s*\d+(?:\.\d+)?\s*만)?")
 _MONEY_MAN_WON = re.compile(r"\d+(?:\.\d+)?\s*만\s*원")
 _MONEY_WON = re.compile(r"\d+(?:\.\d+)?\s*원")
@@ -330,6 +343,26 @@ def title_is_workplace(title: str) -> bool:
     return any(word in (title or "") for word in _WORKPLACE)
 
 
+def title_is_bare_limit(title: str) -> bool:
+    """통장 한도 월 50만처럼 한도만 있고 세금·소멸·합산·비교가 없다."""
+    text = title or ""
+    if "한도" not in text:
+        return False
+    if any(word in text for word in _LIMIT_RESULT):
+        return False
+    if _LIMIT_COMPARE.search(text):
+        return False
+    return True
+
+
+def title_is_pension_double(title: str) -> bool:
+    """국민연금 200%·두 배처럼 조회는 와도 이탈이 큰 훅."""
+    text = title or ""
+    if "연금" not in text:
+        return False
+    return bool(_PENSION_DOUBLE.search(text))
+
+
 def title_numbers(title: str) -> list:
     return _TITLE_NUM.findall(title or "")
 
@@ -477,6 +510,10 @@ def validate_script(script) -> None:
         errors.append("제목이 적금·대출 연%. 한도·세금·월세 결과로")
     if title_is_workplace(title):
         errors.append("제목이 육아휴직 직장복지. 통장·한도·월세로")
+    if title_is_bare_limit(title):
+        errors.append("제목이 한도만. 세금·소멸·합산·비교 결과로")
+    if title_is_pension_double(title):
+        errors.append("제목이 연금 두 배. 한도·세금·이자 만 원으로")
     banned = _hit_banned(title)
     if banned:
         errors.append("제목 금지어: %s" % banned)
