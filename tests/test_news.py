@@ -238,6 +238,31 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([rate, cash], now=datetime(2026, 8, 22, 12))
         self.assertEqual(chosen.title, cash.title)
 
+    def test_skips_same_account_eok(self):
+        used = ["아버지 통장 4억, 지금 못 꺼내?"]
+        remake = _h("엄마 통장 4억, 상속이면 바로 인출")
+        other = _h("예금 보호 1억, 같은 은행은 통장 합산")
+        self.assertTrue(_same_hook(remake.title, used[0]))
+        chosen = choose_headline([remake, other], now=datetime(2026, 8, 23, 21), used_titles=used)
+        self.assertEqual(chosen.title, other.title)
+
+    def test_father_withdraw_beats_bare_limit(self):
+        bare = _h("내 통장 한도, 월 50만 원 입금")
+        father = _h("아버지 명의 예금 4억, 상속 막히면 바로 못 꺼내")
+        self.assertGreater(_weak_news_penalty(bare), 0)
+        self.assertEqual(_house_score(bare), 0)
+        self.assertGreater(_house_score(father), 0)
+        chosen = choose_headline([bare, father], now=datetime(2026, 8, 23, 9))
+        self.assertEqual(chosen.title, father.title)
+
+    def test_father_word_gives_house_score(self):
+        father = _h("돌아가신 아버지 예금, 인출이 막혔다")
+        pension = _h("국민연금 개혁안, 보험료율 인상 검토")
+        self.assertGreater(_house_score(father), 0)
+        self.assertGreater(_house_score(father), _house_score(pension))
+        chosen = choose_headline([pension, father], now=datetime(2026, 8, 23, 15))
+        self.assertEqual(chosen.title, father.title)
+
 
 if __name__ == "__main__":
     unittest.main()

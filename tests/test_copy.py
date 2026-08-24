@@ -212,6 +212,7 @@ class CopyValidateTests(unittest.TestCase):
         self.assertFalse(title_is_bare_limit("자녀 통장에 5000만 원, 그냥 옮기면 세금"))
         self.assertFalse(title_is_bare_limit("전세금 부모에게 빌리면, 무이자 2억?"))
         self.assertFalse(title_is_bare_limit("5억 주담대 이자, 연 140만 원?"))
+        self.assertFalse(title_is_bare_limit("아버지 통장 한도, 4억 못 꺼내?"))
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="내 통장 한도, 월 50만 원?"))
         self.assertIn("한도", str(ctx.exception))

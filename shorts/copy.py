@@ -50,12 +50,18 @@ _STAKE = (
     "전세",
     "월세",
     "부모",
+    "아버지",
+    "아빠",
+    "엄마",
     "증여",
     "한도",
     "통장",
 )
 _HOUSE_TITLE = (
     "부모",
+    "아버지",
+    "아빠",
+    "엄마",
     "전세",
     "월세",
     "증여",
@@ -92,6 +98,9 @@ _LIMIT_RESULT = (
     "무이자",
     "종부세",
     "월세",
+    "꺼내",
+    "인출",
+    "동결",
 )
 _LIMIT_COMPARE = re.compile(r"\d+(?:\.\d+)?\s*만(?:\s*원)?.{0,12}\d+(?:\.\d+)?\s*만")
 _PENSION_DOUBLE = re.compile(r"두\s*배|2배|200\s*%")
@@ -344,7 +353,7 @@ def title_is_workplace(title: str) -> bool:
 
 
 def title_is_bare_limit(title: str) -> bool:
-    """통장 한도 월 50만처럼 한도만 있고 세금·소멸·합산·비교가 없다."""
+    """통장 한도 월 50만처럼 한도만 있고 세금·소멸·합산·비교·인출 제한이 없다."""
     text = title or ""
     if "한도" not in text:
         return False
@@ -511,7 +520,7 @@ def validate_script(script) -> None:
     if title_is_workplace(title):
         errors.append("제목이 육아휴직 직장복지. 통장·한도·월세로")
     if title_is_bare_limit(title):
-        errors.append("제목이 한도만. 세금·소멸·합산·비교 결과로")
+        errors.append("제목이 한도만. 세금·소멸·합산·비교·인출 결과로")
     if title_is_pension_double(title):
         errors.append("제목이 연금 두 배. 한도·세금·이자 만 원으로")
     banned = _hit_banned(title)
@@ -521,7 +530,7 @@ def validate_script(script) -> None:
     if topics and not any(word in title for word in topics):
         errors.append("제목에 주제가 안 보임")
     if not any(word in title for word in _HOUSE_TITLE):
-        errors.append("제목에 내 돈 상황(전세·부모·이자·한도)이 없음")
+        errors.append("제목에 내 돈 상황(전세·부모·아버지·통장·이자·한도)이 없음")
 
     body = description_body(script.description)
     if len(body) < 40:
@@ -621,7 +630,7 @@ def validate_script(script) -> None:
         if title_nums and not any(num in captions[0] for num in title_nums):
             errors.append("첫 자막에 제목 숫자가 없음")
         if not has_personal_stake(captions[0]):
-            errors.append("첫 자막에 내 돈(전세·부모·통장·한도)이 없음")
+            errors.append("첫 자막에 내 돈(전세·부모·아버지·통장·한도)이 없음")
         if _ending(captions[0]) == "formal":
             errors.append("첫 자막을 습니다로 끝내지 말 것")
         formal_n = sum(1 for c in captions if _ending(c) == "formal")
