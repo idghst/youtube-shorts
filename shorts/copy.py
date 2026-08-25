@@ -372,6 +372,18 @@ def title_is_pension_double(title: str) -> bool:
     return bool(_PENSION_DOUBLE.search(text))
 
 
+def title_is_bare_mortgage(title: str) -> bool:
+    """주담대 2억 다 갚아처럼 원금만 있고 이자 만 원이 없다."""
+    text = title or ""
+    if not any(word in text for word in ("주담대", "주택담보")):
+        return False
+    if "이자" in text and (
+        _MONEY_MAN_WON.search(text) or re.search(r"\d+(?:\.\d+)?\s*만", text)
+    ):
+        return False
+    return True
+
+
 def title_numbers(title: str) -> list:
     return _TITLE_NUM.findall(title or "")
 
@@ -523,6 +535,8 @@ def validate_script(script) -> None:
         errors.append("제목이 한도만. 세금·소멸·합산·비교·인출 결과로")
     if title_is_pension_double(title):
         errors.append("제목이 연금 두 배. 한도·세금·이자 만 원으로")
+    if title_is_bare_mortgage(title):
+        errors.append("제목이 주담대 원금만. 억 원금 + 이자 만 원으로")
     banned = _hit_banned(title)
     if banned:
         errors.append("제목 금지어: %s" % banned)

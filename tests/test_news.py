@@ -255,6 +255,15 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([bare, father], now=datetime(2026, 8, 23, 9))
         self.assertEqual(chosen.title, father.title)
 
+    def test_bare_mortgage_payoff_loses_to_interest_cash(self):
+        payoff = _h("다주택 주담대 만기 연장 막히면 원금 2억 일시상환")
+        cash = _h("5억 주담대 이자, 연 140만 원")
+        self.assertGreater(_weak_news_penalty(payoff), 0)
+        self.assertEqual(_house_score(payoff), 0)
+        self.assertGreater(_house_score(cash), 0)
+        chosen = choose_headline([payoff, cash], now=datetime(2026, 8, 24, 21))
+        self.assertEqual(chosen.title, cash.title)
+
     def test_father_word_gives_house_score(self):
         father = _h("돌아가신 아버지 예금, 인출이 막혔다")
         pension = _h("국민연금 개혁안, 보험료율 인상 검토")

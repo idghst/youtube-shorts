@@ -12,6 +12,7 @@ from shorts.copy import (
     title_is_index,
     title_is_price_news,
     title_is_bare_limit,
+    title_is_bare_mortgage,
     title_is_pension_double,
     title_is_rate_promo,
     title_is_workplace,
@@ -216,6 +217,16 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="내 통장 한도, 월 50만 원?"))
         self.assertIn("한도", str(ctx.exception))
+
+    def test_rejects_bare_mortgage_title(self):
+        self.assertTrue(title_is_bare_mortgage("내 주담대 2억, 다음 달 다 갚아?"))
+        self.assertTrue(title_is_bare_mortgage("주택담보대출 2억, 만기면 일시상환?"))
+        self.assertFalse(title_is_bare_mortgage("5억 주담대 이자, 연 140만 원?"))
+        self.assertFalse(title_is_bare_mortgage("3억 주담대 이자, 한 달 200만 원?"))
+        self.assertFalse(title_is_bare_mortgage("전세금 부모에게 빌리면, 무이자 2억?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="내 주담대 2억, 다음 달 다 갚아?"))
+        self.assertIn("주담대", str(ctx.exception))
 
     def test_rejects_pension_double_title(self):
         self.assertTrue(title_is_pension_double("국민연금 1개월 내고 2배, 연금액 200%?"))
