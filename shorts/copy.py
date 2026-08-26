@@ -384,6 +384,24 @@ def title_is_bare_mortgage(title: str) -> bool:
     return True
 
 
+def title_is_account_rate(title: str) -> bool:
+    """통장 이율 30%처럼 금리·세율 %만 있고 이자 만 원·못 꺼내가 없다."""
+    text = title or ""
+    rate_word = any(word in text for word in ("이율", "금리", "세율"))
+    tax_pct = bool(re.search(r"세\s*\d+(?:\.\d+)?\s*%", text))
+    if not (rate_word or tax_pct):
+        return False
+    if not _MONEY_PCT.search(text):
+        return False
+    if "이자" in text and (
+        _MONEY_MAN_WON.search(text) or re.search(r"\d+(?:\.\d+)?\s*만", text)
+    ):
+        return False
+    if any(word in text for word in ("꺼내", "인출", "소멸", "합산")):
+        return False
+    return True
+
+
 def title_numbers(title: str) -> list:
     return _TITLE_NUM.findall(title or "")
 
@@ -537,6 +555,8 @@ def validate_script(script) -> None:
         errors.append("제목이 연금 두 배. 한도·세금·이자 만 원으로")
     if title_is_bare_mortgage(title):
         errors.append("제목이 주담대 원금만. 억 원금 + 이자 만 원으로")
+    if title_is_account_rate(title):
+        errors.append("제목이 통장 이율·세율 %. 억 + 못 꺼내·이자 만 원으로")
     banned = _hit_banned(title)
     if banned:
         errors.append("제목 금지어: %s" % banned)

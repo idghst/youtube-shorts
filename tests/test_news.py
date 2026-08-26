@@ -272,6 +272,15 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([pension, father], now=datetime(2026, 8, 23, 15))
         self.assertEqual(chosen.title, father.title)
 
+    def test_account_rate_loses_to_father_withdraw(self):
+        rate = _h("내 통장 이율, 1년 세 30% 원천징수")
+        father = _h("아버지 명의 예금 4억, 상속 막히면 바로 못 꺼내")
+        self.assertGreater(_weak_news_penalty(rate), 0)
+        self.assertEqual(_house_score(rate), 0)
+        self.assertGreater(_house_score(father), 0)
+        chosen = choose_headline([rate, father], now=datetime(2026, 8, 25, 21))
+        self.assertEqual(chosen.title, father.title)
+
 
 if __name__ == "__main__":
     unittest.main()

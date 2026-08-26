@@ -11,6 +11,7 @@ from shorts.copy import (
     title_has_money,
     title_is_index,
     title_is_price_news,
+    title_is_account_rate,
     title_is_bare_limit,
     title_is_bare_mortgage,
     title_is_pension_double,
@@ -236,6 +237,16 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="국민연금 1개월 내고 2배, 연금액 200%?"))
         self.assertIn("연금", str(ctx.exception))
+
+    def test_rejects_account_rate_title(self):
+        self.assertTrue(title_is_account_rate("내 통장 이율, 1년 세 30%?"))
+        self.assertTrue(title_is_account_rate("예금 이율 3%, 내 통장부터"))
+        self.assertFalse(title_is_account_rate("5억 주담대 이자, 연 140만 원?"))
+        self.assertFalse(title_is_account_rate("아버지 통장 4억, 지금 못 꺼내?"))
+        self.assertFalse(title_is_account_rate("IRP 깨면 16.5% 세금, 55세 연금은 3.3%"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="내 통장 이율, 1년 세 30%?"))
+        self.assertIn("이율", str(ctx.exception))
 
     def test_rejects_title_without_topic(self):
         with self.assertRaises(ValueError) as ctx:
