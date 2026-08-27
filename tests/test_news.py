@@ -281,6 +281,15 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([rate, father], now=datetime(2026, 8, 25, 21))
         self.assertEqual(chosen.title, father.title)
 
+    def test_midpay_promo_loses_to_interest_cash(self):
+        midpay = _h("6억 중도금 무이자, 이자 2250만 원 분양")
+        cash = _h("5억 주담대 이자, 연 140만 원")
+        self.assertGreater(_weak_news_penalty(midpay), 0)
+        self.assertEqual(_house_score(midpay), 0)
+        self.assertGreater(_house_score(cash), 0)
+        chosen = choose_headline([midpay, cash], now=datetime(2026, 8, 26, 21))
+        self.assertEqual(chosen.title, cash.title)
+
 
 if __name__ == "__main__":
     unittest.main()

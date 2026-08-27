@@ -104,6 +104,8 @@ _LIMIT_RESULT = (
 )
 _LIMIT_COMPARE = re.compile(r"\d+(?:\.\d+)?\s*만(?:\s*원)?.{0,12}\d+(?:\.\d+)?\s*만")
 _PENSION_DOUBLE = re.compile(r"두\s*배|2배|200\s*%")
+_MIDPAY = ("중도금", "분양", "입주")
+_MIDPAY_STAKE = ("전세", "월세", "통장", "꺼내", "인출", "증여", "차용")
 _MONEY_EOK = re.compile(r"\d+(?:\.\d+)?\s*억(?:\s*\d+(?:\.\d+)?\s*만)?")
 _MONEY_MAN_WON = re.compile(r"\d+(?:\.\d+)?\s*만\s*원")
 _MONEY_WON = re.compile(r"\d+(?:\.\d+)?\s*원")
@@ -384,6 +386,16 @@ def title_is_bare_mortgage(title: str) -> bool:
     return True
 
 
+def title_is_midpay(title: str) -> bool:
+    """중도금 무이자처럼 분양·입주 상품. 전세·통장·못 꺼내가 아니다."""
+    text = title or ""
+    if not any(word in text for word in _MIDPAY):
+        return False
+    if any(word in text for word in _MIDPAY_STAKE):
+        return False
+    return True
+
+
 def title_is_account_rate(title: str) -> bool:
     """통장 이율 30%처럼 금리·세율 %만 있고 이자 만 원·못 꺼내가 없다."""
     text = title or ""
@@ -557,6 +569,8 @@ def validate_script(script) -> None:
         errors.append("제목이 주담대 원금만. 억 원금 + 이자 만 원으로")
     if title_is_account_rate(title):
         errors.append("제목이 통장 이율·세율 %. 억 + 못 꺼내·이자 만 원으로")
+    if title_is_midpay(title):
+        errors.append("제목이 중도금·분양 상품. 전세 무이자·주담대 이자 만 원으로")
     banned = _hit_banned(title)
     if banned:
         errors.append("제목 금지어: %s" % banned)

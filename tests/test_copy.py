@@ -14,6 +14,7 @@ from shorts.copy import (
     title_is_account_rate,
     title_is_bare_limit,
     title_is_bare_mortgage,
+    title_is_midpay,
     title_is_pension_double,
     title_is_rate_promo,
     title_is_workplace,
@@ -247,6 +248,17 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="내 통장 이율, 1년 세 30%?"))
         self.assertIn("이율", str(ctx.exception))
+
+    def test_rejects_midpay_title(self):
+        self.assertTrue(title_is_midpay("6억 중도금 무이자, 이자 2250만?"))
+        self.assertTrue(title_is_midpay("신축 분양 중도금, 무이자 3년?"))
+        self.assertTrue(title_is_midpay("입주 중도금 대출, 이자 2250만?"))
+        self.assertFalse(title_is_midpay("전세금 부모에게 빌리면, 무이자 2억?"))
+        self.assertFalse(title_is_midpay("5억 주담대 이자, 연 140만 원?"))
+        self.assertFalse(title_is_midpay("아버지 통장 4억, 지금 못 꺼내?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="6억 중도금 무이자, 이자 2250만?"))
+        self.assertIn("중도금", str(ctx.exception))
 
     def test_rejects_title_without_topic(self):
         with self.assertRaises(ValueError) as ctx:
