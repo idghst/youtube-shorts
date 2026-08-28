@@ -281,6 +281,15 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([rate, father], now=datetime(2026, 8, 25, 21))
         self.assertEqual(chosen.title, father.title)
 
+    def test_jeonse_account_year_rate_loses_to_withdraw(self):
+        locked = _h("전세 보증금 안심신탁 통장, 묶이면 연 4.5% 이자")
+        father = _h("아버지 명의 예금 4억, 상속 막히면 바로 못 꺼내")
+        self.assertGreater(_weak_news_penalty(locked), 0)
+        self.assertEqual(_house_score(locked), 0)
+        self.assertGreater(_house_score(father), 0)
+        chosen = choose_headline([locked, father], now=datetime(2026, 8, 27, 21))
+        self.assertEqual(chosen.title, father.title)
+
     def test_midpay_promo_loses_to_interest_cash(self):
         midpay = _h("6억 중도금 무이자, 이자 2250만 원 분양")
         cash = _h("5억 주담대 이자, 연 140만 원")

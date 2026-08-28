@@ -397,11 +397,14 @@ def title_is_midpay(title: str) -> bool:
 
 
 def title_is_account_rate(title: str) -> bool:
-    """통장 이율 30%처럼 금리·세율 %만 있고 이자 만 원·못 꺼내가 없다."""
+    """통장 이율·전세 통장 연%처럼 금리 %만 있고 이자 만 원·못 꺼내가 없다."""
     text = title or ""
-    rate_word = any(word in text for word in ("이율", "금리", "세율"))
+    rate_word = any(word in text for word in ("이율", "금리", "세율", "잔이자"))
     tax_pct = bool(re.search(r"세\s*\d+(?:\.\d+)?\s*%", text))
-    if not (rate_word or tax_pct):
+    year_pct_on_account = bool(_RATE_ONLY.search(text)) and any(
+        word in text for word in ("통장", "전세", "예금")
+    )
+    if not (rate_word or tax_pct or year_pct_on_account):
         return False
     if not _MONEY_PCT.search(text):
         return False
@@ -568,7 +571,7 @@ def validate_script(script) -> None:
     if title_is_bare_mortgage(title):
         errors.append("제목이 주담대 원금만. 억 원금 + 이자 만 원으로")
     if title_is_account_rate(title):
-        errors.append("제목이 통장 이율·세율 %. 억 + 못 꺼내·이자 만 원으로")
+        errors.append("제목이 통장 이율·전세 연%. 억 + 못 꺼내·이자 만 원으로")
     if title_is_midpay(title):
         errors.append("제목이 중도금·분양 상품. 전세 무이자·주담대 이자 만 원으로")
     banned = _hit_banned(title)

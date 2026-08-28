@@ -242,9 +242,14 @@ class CopyValidateTests(unittest.TestCase):
     def test_rejects_account_rate_title(self):
         self.assertTrue(title_is_account_rate("내 통장 이율, 1년 세 30%?"))
         self.assertTrue(title_is_account_rate("예금 이율 3%, 내 통장부터"))
+        self.assertTrue(title_is_account_rate("내 전세 통장, 묶이면 연 4.5%?"))
+        self.assertTrue(title_is_account_rate("전세 보증금 잔이자, 연 3%?"))
         self.assertFalse(title_is_account_rate("5억 주담대 이자, 연 140만 원?"))
         self.assertFalse(title_is_account_rate("아버지 통장 4억, 지금 못 꺼내?"))
         self.assertFalse(title_is_account_rate("IRP 깨면 16.5% 세금, 55세 연금은 3.3%"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="내 전세 통장, 묶이면 연 4.5%?"))
+        self.assertIn("연%", str(ctx.exception))
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="내 통장 이율, 1년 세 30%?"))
         self.assertIn("이율", str(ctx.exception))
