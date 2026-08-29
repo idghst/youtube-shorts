@@ -14,6 +14,7 @@ from shorts.copy import (
     title_is_account_rate,
     title_is_bare_limit,
     title_is_bare_mortgage,
+    title_is_family_pension,
     title_is_midpay,
     title_is_pension_double,
     title_is_rate_promo,
@@ -253,6 +254,16 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="내 통장 이율, 1년 세 30%?"))
         self.assertIn("이율", str(ctx.exception))
+
+    def test_rejects_family_pension_title(self):
+        self.assertTrue(title_is_family_pension("내 국민연금 가족, 연 70만 원?"))
+        self.assertTrue(title_is_family_pension("유족연금 월 80만 원, 바로 받아요?"))
+        self.assertFalse(title_is_family_pension("연금 합쳐 2000만 넘으면 건보 피부양자 탈락"))
+        self.assertFalse(title_is_family_pension("5억 주담대 이자, 연 140만 원?"))
+        self.assertFalse(title_is_family_pension("아버지 통장 4억, 지금 못 꺼내?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="내 국민연금 가족, 연 70만 원?"))
+        self.assertIn("가족", str(ctx.exception))
 
     def test_rejects_midpay_title(self):
         self.assertTrue(title_is_midpay("6억 중도금 무이자, 이자 2250만?"))
