@@ -281,6 +281,15 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([rate, father], now=datetime(2026, 8, 25, 21))
         self.assertEqual(chosen.title, father.title)
 
+    def test_transfer_pct_loses_to_father_withdraw(self):
+        transfer = _h("내 통장 이체, 1년 새 30% 늘었다")
+        father = _h("아버지 명의 예금 4억, 상속 막히면 바로 못 꺼내")
+        self.assertGreater(_weak_news_penalty(transfer), 0)
+        self.assertEqual(_house_score(transfer), 0)
+        self.assertGreater(_house_score(father), 0)
+        chosen = choose_headline([transfer, father], now=datetime(2026, 8, 29, 21))
+        self.assertEqual(chosen.title, father.title)
+
     def test_jeonse_account_year_rate_loses_to_withdraw(self):
         locked = _h("전세 보증금 안심신탁 통장, 묶이면 연 4.5% 이자")
         father = _h("아버지 명의 예금 4억, 상속 막히면 바로 못 꺼내")

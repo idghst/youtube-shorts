@@ -424,16 +424,21 @@ def title_is_family_pension(title: str) -> bool:
 
 
 def title_is_account_rate(title: str) -> bool:
-    """통장 이율·전세 통장 연%처럼 금리 %만 있고 이자 만 원·못 꺼내가 없다."""
+    """통장 이율·이체 %·전세 통장 연%처럼 %만 있고 억·이자 만 원·못 꺼내가 없다."""
     text = title or ""
-    rate_word = any(word in text for word in ("이율", "금리", "세율", "잔이자"))
+    rate_word = any(word in text for word in ("이율", "금리", "세율", "잔이자", "이체"))
     tax_pct = bool(re.search(r"세\s*\d+(?:\.\d+)?\s*%", text))
     year_pct_on_account = bool(_RATE_ONLY.search(text)) and any(
         word in text for word in ("통장", "전세", "예금")
     )
-    if not (rate_word or tax_pct or year_pct_on_account):
+    yoy_pct_on_account = bool(
+        re.search(r"(?:1년|작년|전년).{0,8}\d+(?:\.\d+)?\s*%", text)
+    ) and any(word in text for word in ("통장", "이체", "예금"))
+    if not (rate_word or tax_pct or year_pct_on_account or yoy_pct_on_account):
         return False
     if not _MONEY_PCT.search(text):
+        return False
+    if _MONEY_EOK.search(text) or _MONEY_MAN_WON.search(text):
         return False
     if "이자" in text and (
         _MONEY_MAN_WON.search(text) or re.search(r"\d+(?:\.\d+)?\s*만", text)
@@ -598,7 +603,7 @@ def validate_script(script) -> None:
     if title_is_bare_mortgage(title):
         errors.append("제목이 주담대 원금만. 억 원금 + 이자 만 원으로")
     if title_is_account_rate(title):
-        errors.append("제목이 통장 이율·전세 연%. 억 + 못 꺼내·이자 만 원으로")
+        errors.append("제목이 통장 이율·이체 %·전세 연%. 억 + 못 꺼내·이자 만 원으로")
     if title_is_midpay(title):
         errors.append("제목이 중도금·분양 상품. 전세 무이자·주담대 이자 만 원으로")
     if title_is_family_pension(title):
