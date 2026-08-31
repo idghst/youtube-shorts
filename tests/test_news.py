@@ -308,6 +308,18 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([family, father], now=datetime(2026, 8, 28, 21))
         self.assertEqual(chosen.title, father.title)
 
+    def test_nps_addon_loses_to_withdraw(self):
+        addon = _h("노령연금 가급액, 배우자 연 70만 원")
+        bare = _h("내 국민연금, 연 70만 원 더 붙나")
+        father = _h("아버지 명의 예금 4억, 상속 막히면 바로 못 꺼내")
+        self.assertGreater(_weak_news_penalty(addon), 0)
+        self.assertGreater(_weak_news_penalty(bare), 0)
+        self.assertEqual(_house_score(addon), 0)
+        self.assertEqual(_house_score(bare), 0)
+        self.assertGreater(_house_score(father), 0)
+        chosen = choose_headline([addon, bare, father], now=datetime(2026, 8, 30, 21))
+        self.assertEqual(chosen.title, father.title)
+
     def test_midpay_promo_loses_to_interest_cash(self):
         midpay = _h("6억 중도금 무이자, 이자 2250만 원 분양")
         cash = _h("5억 주담대 이자, 연 140만 원")

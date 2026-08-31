@@ -264,12 +264,19 @@ class CopyValidateTests(unittest.TestCase):
     def test_rejects_family_pension_title(self):
         self.assertTrue(title_is_family_pension("내 국민연금 가족, 연 70만 원?"))
         self.assertTrue(title_is_family_pension("유족연금 월 80만 원, 바로 받아요?"))
+        self.assertTrue(title_is_family_pension("내 노령연금 가급, 연 70만 원?"))
+        self.assertTrue(title_is_family_pension("내 국민연금 배우자, 연 70만 원?"))
+        self.assertTrue(title_is_family_pension("내 국민연금 부양가족, 연 70만 원?"))
+        self.assertTrue(title_is_family_pension("내 국민연금, 연 70만 원?"))
+        self.assertTrue(title_is_family_pension("내 기초연금, 월 30만 원?"))
         self.assertFalse(title_is_family_pension("연금 합쳐 2000만 넘으면 건보 피부양자 탈락"))
+        self.assertFalse(title_is_family_pension("종부세 14억? 주택연금 가입은 아직 12억"))
         self.assertFalse(title_is_family_pension("5억 주담대 이자, 연 140만 원?"))
         self.assertFalse(title_is_family_pension("아버지 통장 4억, 지금 못 꺼내?"))
+        self.assertFalse(title_is_family_pension("자녀 통장에 5000만 원, 그냥 옮기면 세금"))
         with self.assertRaises(ValueError) as ctx:
-            validate_script(_ok(title="내 국민연금 가족, 연 70만 원?"))
-        self.assertIn("가족", str(ctx.exception))
+            validate_script(_ok(title="내 노령연금 가급, 연 70만 원?"))
+        self.assertIn("가급", str(ctx.exception))
 
     def test_rejects_midpay_title(self):
         self.assertTrue(title_is_midpay("6억 중도금 무이자, 이자 2250만?"))

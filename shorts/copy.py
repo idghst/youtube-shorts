@@ -106,7 +106,9 @@ _LIMIT_COMPARE = re.compile(r"\d+(?:\.\d+)?\s*만(?:\s*원)?.{0,12}\d+(?:\.\d+)?
 _PENSION_DOUBLE = re.compile(r"두\s*배|2배|200\s*%")
 _MIDPAY = ("중도금", "분양", "입주")
 _MIDPAY_STAKE = ("전세", "월세", "통장", "꺼내", "인출", "증여", "차용")
-_FAMILY_PENSION = ("가족", "유족", "분할연금", "분할 연금")
+_FAMILY_PENSION = ("가족", "유족", "분할연금", "분할 연금", "가급", "부양", "배우자")
+_NPS_ADDON = ("국민연금", "노령연금", "기초연금", "가급")
+_NPS_AMOUNT = re.compile(r"(?:연|월)\s*\d+(?:\.\d+)?\s*만")
 _PENSION_STAKE = (
     "한도",
     "통장",
@@ -412,11 +414,13 @@ def title_is_midpay(title: str) -> bool:
 
 
 def title_is_family_pension(title: str) -> bool:
-    """국민연금 가족 연 70만처럼 가족·유족 급여. 한도·통장·세금이 아니다."""
+    """국민연금 가족 연 70만·가급·배우자처럼 가족·유족 급여. 한도·통장·세금이 아니다."""
     text = title or ""
-    if "연금" not in text:
+    if "연금" not in text and "가급" not in text:
         return False
-    if not any(word in text for word in _FAMILY_PENSION):
+    family = any(word in text for word in _FAMILY_PENSION)
+    addon = any(word in text for word in _NPS_ADDON) and bool(_NPS_AMOUNT.search(text))
+    if not (family or addon):
         return False
     if any(word in text for word in _PENSION_STAKE):
         return False
@@ -607,7 +611,7 @@ def validate_script(script) -> None:
     if title_is_midpay(title):
         errors.append("제목이 중도금·분양 상품. 전세 무이자·주담대 이자 만 원으로")
     if title_is_family_pension(title):
-        errors.append("제목이 국민연금 가족·유족. 한도·통장·세금·못 꺼내로")
+        errors.append("제목이 국민연금 가족·유족·가급. 한도·통장·세금·못 꺼내로")
     banned = _hit_banned(title)
     if banned:
         errors.append("제목 금지어: %s" % banned)
