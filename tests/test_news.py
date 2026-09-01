@@ -320,6 +320,17 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([addon, bare, father], now=datetime(2026, 8, 30, 21))
         self.assertEqual(chosen.title, father.title)
 
+    def test_jeonse_yield_loses_to_wolse_compare(self):
+        parked = _h("전세금 2억 맡기면, 월 73만 원 이자")
+        compare = _h("전세 월세 74만 원이 53만으로 깎인다")
+        hug = _h("전세금 HUG에 맡기고 집주인은 월세 받는다")
+        self.assertGreater(_weak_news_penalty(parked), 0)
+        self.assertEqual(_house_score(parked), 0)
+        self.assertGreater(_house_score(compare), 0)
+        self.assertGreater(_house_score(hug), 0)
+        chosen = choose_headline([parked, compare], now=datetime(2026, 8, 22, 9))
+        self.assertEqual(chosen.title, compare.title)
+
     def test_midpay_promo_loses_to_interest_cash(self):
         midpay = _h("6억 중도금 무이자, 이자 2250만 원 분양")
         cash = _h("5억 주담대 이자, 연 140만 원")

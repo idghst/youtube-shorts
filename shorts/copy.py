@@ -106,6 +106,8 @@ _LIMIT_COMPARE = re.compile(r"\d+(?:\.\d+)?\s*만(?:\s*원)?.{0,12}\d+(?:\.\d+)?
 _PENSION_DOUBLE = re.compile(r"두\s*배|2배|200\s*%")
 _MIDPAY = ("중도금", "분양", "입주")
 _MIDPAY_STAKE = ("전세", "월세", "통장", "꺼내", "인출", "증여", "차용")
+_JEONSE_YIELD_VERB = ("맡기면", "맡기고", "예치", "묶어", "묶이면", "넣으면")
+_JEONSE_YIELD_STAKE = ("부모", "한도", "꺼내", "인출", "증여", "무이자", "차용")
 _FAMILY_PENSION = ("가족", "유족", "분할연금", "분할 연금", "가급", "부양", "배우자")
 _NPS_ADDON = ("국민연금", "노령연금", "기초연금", "가급")
 _NPS_AMOUNT = re.compile(r"(?:연|월)\s*\d+(?:\.\d+)?\s*만")
@@ -413,6 +415,22 @@ def title_is_midpay(title: str) -> bool:
     return True
 
 
+def title_is_jeonse_yield(title: str) -> bool:
+    """전세금 2억 맡기면 월 73만처럼 운용 수익 환산. 월세 비교·부모 한도가 아니다."""
+    text = title or ""
+    if "전세" not in text:
+        return False
+    if not any(word in text for word in _JEONSE_YIELD_VERB):
+        return False
+    if not re.search(r"월(?:세)?\s*\d+", text):
+        return False
+    if _LIMIT_COMPARE.search(text):
+        return False
+    if any(word in text for word in _JEONSE_YIELD_STAKE):
+        return False
+    return True
+
+
 def title_is_family_pension(title: str) -> bool:
     """국민연금 가족 연 70만·가급·배우자처럼 가족·유족 급여. 한도·통장·세금이 아니다."""
     text = title or ""
@@ -612,6 +630,8 @@ def validate_script(script) -> None:
         errors.append("제목이 중도금·분양 상품. 전세 무이자·주담대 이자 만 원으로")
     if title_is_family_pension(title):
         errors.append("제목이 국민연금 가족·유족·가급. 한도·통장·세금·못 꺼내로")
+    if title_is_jeonse_yield(title):
+        errors.append("제목이 전세금 맡기면 월 환산. 월세 비교·부모 한도로")
     banned = _hit_banned(title)
     if banned:
         errors.append("제목 금지어: %s" % banned)

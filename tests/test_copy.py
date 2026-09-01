@@ -15,6 +15,7 @@ from shorts.copy import (
     title_is_bare_limit,
     title_is_bare_mortgage,
     title_is_family_pension,
+    title_is_jeonse_yield,
     title_is_midpay,
     title_is_pension_double,
     title_is_rate_promo,
@@ -277,6 +278,19 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="내 노령연금 가급, 연 70만 원?"))
         self.assertIn("가급", str(ctx.exception))
+
+    def test_rejects_jeonse_yield_title(self):
+        self.assertTrue(title_is_jeonse_yield("전세금 2억 맡기면, 월 73만 원?"))
+        self.assertTrue(title_is_jeonse_yield("전세금 3억 맡기고 월 110만 원?"))
+        self.assertTrue(title_is_jeonse_yield("전세금 맡기면 월세 80만 원이 집주인 통장"))
+        self.assertFalse(title_is_jeonse_yield("내 전세 월세, 74만 원이 53만?"))
+        self.assertFalse(title_is_jeonse_yield("전세금 부모에게 빌리면, 무이자 2억?"))
+        self.assertFalse(title_is_jeonse_yield("전세금 HUG에 맡기고 집주인은 월세 받는다"))
+        self.assertFalse(title_is_jeonse_yield("5억 주담대 이자, 연 140만 원?"))
+        self.assertFalse(title_is_jeonse_yield("아버지 통장 4억, 지금 못 꺼내?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="전세금 2억 맡기면, 월 73만 원?"))
+        self.assertIn("맡기면", str(ctx.exception))
 
     def test_rejects_midpay_title(self):
         self.assertTrue(title_is_midpay("6억 중도금 무이자, 이자 2250만?"))
