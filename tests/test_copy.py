@@ -17,6 +17,7 @@ from shorts.copy import (
     title_is_family_pension,
     title_is_jeonse_yield,
     title_is_midpay,
+    title_is_month_interest,
     title_is_pension_double,
     title_is_rate_promo,
     title_is_workplace,
@@ -231,6 +232,19 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="내 주담대 2억, 다음 달 다 갚아?"))
         self.assertIn("주담대", str(ctx.exception))
+
+    def test_rejects_month_interest_title(self):
+        self.assertTrue(title_is_month_interest("3억 주담대 이자, 한 달 200만 원?"))
+        self.assertTrue(title_is_month_interest("주담대 이자, 월 200만 원?"))
+        self.assertTrue(title_is_month_interest("주택담보대출 이자, 한달 180만 원"))
+        self.assertFalse(title_is_month_interest("5억 주담대 이자, 연 140만 원?"))
+        self.assertFalse(title_is_month_interest("5억 주담대 이자, 연 140만·한 달 12만?"))
+        self.assertFalse(title_is_month_interest("내 전세 월세, 74만 원이 53만?"))
+        self.assertFalse(title_is_month_interest("아버지 통장 4억, 지금 못 꺼내?"))
+        self.assertFalse(title_is_month_interest("내 주담대 2억, 다음 달 다 갚아?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="3억 주담대 이자, 한 달 200만 원?"))
+        self.assertIn("한 달", str(ctx.exception))
 
     def test_rejects_pension_double_title(self):
         self.assertTrue(title_is_pension_double("국민연금 1개월 내고 2배, 연금액 200%?"))

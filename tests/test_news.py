@@ -331,6 +331,15 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([parked, compare], now=datetime(2026, 8, 22, 9))
         self.assertEqual(chosen.title, compare.title)
 
+    def test_month_interest_loses_to_year_cash(self):
+        monthly = _h("3억 주담대 이자, 한 달 200만 원 원리금")
+        yearly = _h("5억 주담대 이자, 연 140만 원")
+        self.assertGreater(_weak_news_penalty(monthly), 0)
+        self.assertEqual(_house_score(monthly), 0)
+        self.assertGreater(_house_score(yearly), 0)
+        chosen = choose_headline([monthly, yearly], now=datetime(2026, 8, 19, 21))
+        self.assertEqual(chosen.title, yearly.title)
+
     def test_midpay_promo_loses_to_interest_cash(self):
         midpay = _h("6억 중도금 무이자, 이자 2250만 원 분양")
         cash = _h("5억 주담대 이자, 연 140만 원")

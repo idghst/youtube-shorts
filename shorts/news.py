@@ -20,6 +20,7 @@ from shorts.copy import (
     title_is_family_pension,
     title_is_jeonse_yield,
     title_is_midpay,
+    title_is_month_interest,
     title_is_pension_double,
     title_is_rate_promo,
     title_is_workplace,
@@ -282,6 +283,8 @@ def _rejected_house(title: str, blob: str) -> bool:
         or title_is_pension_double(blob)
         or title_is_bare_mortgage(title)
         or title_is_bare_mortgage(blob)
+        or title_is_month_interest(title)
+        or title_is_month_interest(blob)
         or title_is_account_rate(title)
         or title_is_account_rate(blob)
         or title_is_midpay(title)
@@ -302,7 +305,7 @@ def _house_score(headline: Headline) -> int:
 
 
 def _weak_news_penalty(headline: Headline) -> int:
-    """지역 이전·2030 타깃·국가 조·연 N% 상품·육아휴직·한도만·연금 두 배·국민연금 가족·가급·배우자·주담대 원금 다 갚아·통장 이율·이체 %·전세 통장 연%·전세금 맡기면 월 환산·중도금·분양·지수·전셋값 시세는 조회가 안 남는다. 통장·한도가 있으면 지역·조는 깎지 않는다."""
+    """지역 이전·2030 타깃·국가 조·연 N% 상품·육아휴직·한도만·연금 두 배·국민연금 가족·가급·배우자·주담대 원금 다 갚아·주담대 한 달 이자·통장 이율·이체 %·전세 통장 연%·전세금 맡기면 월 환산·중도금·분양·지수·전셋값 시세는 조회가 안 남는다. 통장·한도가 있으면 지역·조는 깎지 않는다."""
     blob = _blob(headline)
     title = headline.title or ""
     n = 0
@@ -326,6 +329,8 @@ def _weak_news_penalty(headline: Headline) -> int:
     if title_is_pension_double(title) or title_is_pension_double(blob):
         n += 1
     if title_is_bare_mortgage(title) or title_is_bare_mortgage(blob):
+        n += 1
+    if title_is_month_interest(title) or title_is_month_interest(blob):
         n += 1
     if title_is_account_rate(title) or title_is_account_rate(blob):
         n += 1
@@ -399,7 +404,7 @@ def choose_headline(
     now: datetime | None = None,
     used_titles: list | None = None,
 ) -> Headline:
-    """미사용 헤드라인 중 통장·한도·이체·월세·이자 만 원·아버지 통장 억+못 꺼내 → 시니어 관심 → 지역/2030/조/연%상품/육아휴직/한도만/연금두배/국민연금가족가급/주담대원금/통장이율%/이체%/전세통장연%/전세금맡기면월환산/중도금분양/코스피/시세 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
+    """미사용 헤드라인 중 통장·한도·이체·월세·이자 만 원·아버지 통장 억+못 꺼내 → 시니어 관심 → 지역/2030/조/연%상품/육아휴직/한도만/연금두배/국민연금가족가급/주담대원금/주담대한달이자/통장이율%/이체%/전세통장연%/전세금맡기면월환산/중도금분양/코스피/시세 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
     if not unused:
         raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
     prefer = _preferred_sources(now)

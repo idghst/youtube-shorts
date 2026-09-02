@@ -129,6 +129,8 @@ _MONEY_EOK = re.compile(r"\d+(?:\.\d+)?\s*억(?:\s*\d+(?:\.\d+)?\s*만)?")
 _MONEY_MAN_WON = re.compile(r"\d+(?:\.\d+)?\s*만\s*원")
 _MONEY_WON = re.compile(r"\d+(?:\.\d+)?\s*원")
 _MONEY_PCT = re.compile(r"\d+(?:\.\d+)?\s*%")
+_MONTH_INTEREST = re.compile(r"(?:한\s*달|월)\s*\d+(?:\.\d+)?\s*만")
+_YEAR_MAN = re.compile(r"연\s*\d+(?:\.\d+)?\s*만")
 _NOT_MONEY_MAN = re.compile(r"\d+(?:\.\d+)?\s*만\s*(?:명|가구|채|세대|건)")
 _PCT_STAKE = ("세금", "한도", "건보", "증여", "이체", "통장", "연금")
 _PHOTO_MARK = (
@@ -405,6 +407,20 @@ def title_is_bare_mortgage(title: str) -> bool:
     return True
 
 
+def title_is_month_interest(title: str) -> bool:
+    """3억 주담대 이자 한 달 200만처럼 월 원리금. 억 + 연 만 원이 아니다."""
+    text = title or ""
+    if not any(word in text for word in ("주담대", "주택담보")):
+        return False
+    if "이자" not in text:
+        return False
+    if not _MONTH_INTEREST.search(text):
+        return False
+    if _YEAR_MAN.search(text):
+        return False
+    return True
+
+
 def title_is_midpay(title: str) -> bool:
     """중도금 무이자처럼 분양·입주 상품. 전세·통장·못 꺼내가 아니다."""
     text = title or ""
@@ -624,6 +640,8 @@ def validate_script(script) -> None:
         errors.append("제목이 연금 두 배. 한도·세금·이자 만 원으로")
     if title_is_bare_mortgage(title):
         errors.append("제목이 주담대 원금만. 억 원금 + 이자 만 원으로")
+    if title_is_month_interest(title):
+        errors.append("제목이 주담대 한 달 이자. 억 원금 + 연 만 원으로")
     if title_is_account_rate(title):
         errors.append("제목이 통장 이율·이체 %·전세 연%. 억 + 못 꺼내·이자 만 원으로")
     if title_is_midpay(title):
