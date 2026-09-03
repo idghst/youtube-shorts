@@ -178,7 +178,7 @@ class ChooseHeadlineTests(unittest.TestCase):
 
     def test_rate_only_headline_is_penalized(self):
         rate = _h("변동 주담대 이자, 연 6%로 상승")
-        tax = _h("IRP 해지하면 16.5% 세금")
+        tax = _h("가족이체 2억, 증여세 10%")
         self.assertGreater(_weak_news_penalty(rate), 0)
         self.assertEqual(_weak_news_penalty(tax), 0)
 
@@ -330,6 +330,23 @@ class ChooseHeadlineTests(unittest.TestCase):
         self.assertGreater(_house_score(hug), 0)
         chosen = choose_headline([parked, compare], now=datetime(2026, 8, 22, 9))
         self.assertEqual(chosen.title, compare.title)
+
+    def test_tax_rate_loses_to_eok_tax(self):
+        rate = _h("IRP 해지하면 16.5% 세금, 연금은 3.3%")
+        cash = _h("자녀 통장 5000만 원, 그냥 옮기면 증여세")
+        self.assertGreater(_weak_news_penalty(rate), 0)
+        self.assertEqual(_house_score(rate), 0)
+        self.assertGreater(_house_score(cash), 0)
+        chosen = choose_headline([rate, cash], now=datetime(2026, 8, 15, 9))
+        self.assertEqual(chosen.title, cash.title)
+
+    def test_nation_jo_loses_to_deposit_eok(self):
+        nation = _h("퇴직연금 적립금 500조, 30%가 20년째 방치")
+        house = _h("예금 보호 1억, 같은 은행은 통장 합산")
+        self.assertGreater(_weak_news_penalty(nation), 0)
+        self.assertEqual(_house_score(nation), 0)
+        chosen = choose_headline([nation, house], now=datetime(2026, 8, 16, 9))
+        self.assertEqual(chosen.title, house.title)
 
     def test_month_interest_loses_to_year_cash(self):
         monthly = _h("3억 주담대 이자, 한 달 200만 원 원리금")

@@ -18,8 +18,10 @@ from shorts.copy import (
     title_is_jeonse_yield,
     title_is_midpay,
     title_is_month_interest,
+    title_is_nation_jo,
     title_is_pension_double,
     title_is_rate_promo,
+    title_is_tax_rate,
     title_is_workplace,
     validate_script,
 )
@@ -305,6 +307,31 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="전세금 2억 맡기면, 월 73만 원?"))
         self.assertIn("맡기면", str(ctx.exception))
+
+    def test_rejects_tax_rate_title(self):
+        self.assertTrue(title_is_tax_rate("IRP 깨면 16.5% 세금, 55세 연금은 3.3%"))
+        self.assertTrue(title_is_tax_rate("퇴직소득세 16.5%, 연금은 3.3%?"))
+        self.assertTrue(title_is_tax_rate("양도세율 6%, 내 집부터"))
+        self.assertFalse(title_is_tax_rate("자녀 통장에 5000만 원, 그냥 옮기면 세금"))
+        self.assertFalse(title_is_tax_rate("가족이체 2억, 증여세 10%?"))
+        self.assertFalse(title_is_tax_rate("종부세 14억? 주택연금 가입은 아직 12억"))
+        self.assertFalse(title_is_tax_rate("5억 주담대 이자, 연 140만 원?"))
+        self.assertFalse(title_is_tax_rate("아버지 통장 4억, 지금 못 꺼내?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="IRP 깨면 16.5% 세금, 55세 연금은 3.3%"))
+        self.assertIn("세율", str(ctx.exception))
+
+    def test_rejects_nation_jo_title(self):
+        self.assertTrue(title_is_nation_jo("퇴직연금 500조, 30%가 20년째 였다"))
+        self.assertTrue(title_is_nation_jo("잠든 예금 1.9조, 내 통장부터"))
+        self.assertTrue(title_is_nation_jo("가계빚 2000조, 또 늘었나?"))
+        self.assertFalse(title_is_nation_jo("예금 보호 1억, 같은 은행은 통장 합산"))
+        self.assertFalse(title_is_nation_jo("자녀 통장에 5000만 원, 그냥 옮기면 세금"))
+        self.assertFalse(title_is_nation_jo("5억 주담대 이자, 연 140만 원?"))
+        self.assertFalse(title_is_nation_jo("아버지 통장 4억, 지금 못 꺼내?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="퇴직연금 500조, 30%가 20년째"))
+        self.assertIn("조", str(ctx.exception))
 
     def test_rejects_midpay_title(self):
         self.assertTrue(title_is_midpay("6억 중도금 무이자, 이자 2250만?"))

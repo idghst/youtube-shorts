@@ -131,6 +131,8 @@ _MONEY_WON = re.compile(r"\d+(?:\.\d+)?\s*원")
 _MONEY_PCT = re.compile(r"\d+(?:\.\d+)?\s*%")
 _MONTH_INTEREST = re.compile(r"(?:한\s*달|월)\s*\d+(?:\.\d+)?\s*만")
 _YEAR_MAN = re.compile(r"연\s*\d+(?:\.\d+)?\s*만")
+_NATION_JO = re.compile(r"\d+(?:\.\d+)?\s*조")
+_TAX_RATE_WORD = ("세금", "세율", "양도세", "증여세", "종부세", "소득세", "퇴직소득세")
 _NOT_MONEY_MAN = re.compile(r"\d+(?:\.\d+)?\s*만\s*(?:명|가구|채|세대|건)")
 _PCT_STAKE = ("세금", "한도", "건보", "증여", "이체", "통장", "연금")
 _PHOTO_MARK = (
@@ -324,7 +326,7 @@ def has_number_or_question(text: str) -> bool:
 
 
 def title_has_money(title: str) -> bool:
-    """제목에 억, 만 원, 원, 또는 세금·한도 %가 있어야 한다. 만 명·연 N%만으로는 안 된다."""
+    """제목에 억, 만 원, 원, 또는 세금·한도 %가 있어야 한다. 만 명·연 N%·세율 %·조만으로는 안 된다."""
     text = title or ""
     if _NOT_MONEY_MAN.search(text):
         text = _NOT_MONEY_MAN.sub(" ", text)
@@ -429,6 +431,23 @@ def title_is_midpay(title: str) -> bool:
     if any(word in text for word in _MIDPAY_STAKE):
         return False
     return True
+
+
+def title_is_tax_rate(title: str) -> bool:
+    """IRP 16.5% 세금처럼 세율 비교. 억/만 원 세금이 아니다."""
+    text = title or ""
+    if not _MONEY_PCT.search(text):
+        return False
+    if not any(word in text for word in _TAX_RATE_WORD):
+        return False
+    if _MONEY_EOK.search(text) or _MONEY_MAN_WON.search(text):
+        return False
+    return True
+
+
+def title_is_nation_jo(title: str) -> bool:
+    """퇴직연금 500조처럼 국가 통계. 억/만 원 한도가 아니다."""
+    return bool(_NATION_JO.search(title or ""))
 
 
 def title_is_jeonse_yield(title: str) -> bool:
@@ -650,6 +669,10 @@ def validate_script(script) -> None:
         errors.append("제목이 국민연금 가족·유족·가급. 한도·통장·세금·못 꺼내로")
     if title_is_jeonse_yield(title):
         errors.append("제목이 전세금 맡기면 월 환산. 월세 비교·부모 한도로")
+    if title_is_tax_rate(title):
+        errors.append("제목이 세금 세율 %. 억/만 원 세금으로")
+    if title_is_nation_jo(title):
+        errors.append("제목이 국가 조 단위. 억/만 원 한도로")
     banned = _hit_banned(title)
     if banned:
         errors.append("제목 금지어: %s" % banned)

@@ -21,8 +21,10 @@ from shorts.copy import (
     title_is_jeonse_yield,
     title_is_midpay,
     title_is_month_interest,
+    title_is_nation_jo,
     title_is_pension_double,
     title_is_rate_promo,
+    title_is_tax_rate,
     title_is_workplace,
 )
 from shorts.models import Headline, slugify
@@ -261,7 +263,6 @@ _WEAK_YOUTH = ("2030", "mz", "엠지", "청년층")
 _MARKET_INDEX = ("코스피", "코스닥", "나스닥", "다우", "닛케이", "따라가")
 _PRICE_NEWS = ("전셋값", "집값", "시세", "2년 새")
 _PRICE_STAKE = ("한도", "세금", "이체", "월세", "무이자", "합산", "증여", "종부세")
-_NATION_JO = re.compile(r"\d+\s*조")
 _RATE_ONLY = re.compile(r"연\s*\d+(?:\.\d+)?\s*%")
 _HOOK_CORE = (
     "전세금", "예금보호", "증여세", "차용증", "무이자", "피부양자", "가족이체", "종부세",
@@ -293,6 +294,10 @@ def _rejected_house(title: str, blob: str) -> bool:
         or title_is_family_pension(blob)
         or title_is_jeonse_yield(title)
         or title_is_jeonse_yield(blob)
+        or title_is_tax_rate(title)
+        or title_is_tax_rate(blob)
+        or title_is_nation_jo(title)
+        or title_is_nation_jo(blob)
     )
 
 
@@ -305,7 +310,7 @@ def _house_score(headline: Headline) -> int:
 
 
 def _weak_news_penalty(headline: Headline) -> int:
-    """지역 이전·2030 타깃·국가 조·연 N% 상품·육아휴직·한도만·연금 두 배·국민연금 가족·가급·배우자·주담대 원금 다 갚아·주담대 한 달 이자·통장 이율·이체 %·전세 통장 연%·전세금 맡기면 월 환산·중도금·분양·지수·전셋값 시세는 조회가 안 남는다. 통장·한도가 있으면 지역·조는 깎지 않는다."""
+    """지역 이전·2030 타깃·국가 조·세금 세율 %·연 N% 상품·육아휴직·한도만·연금 두 배·국민연금 가족·가급·배우자·주담대 원금 다 갚아·주담대 한 달 이자·통장 이율·이체 %·전세 통장 연%·전세금 맡기면 월 환산·중도금·분양·지수·전셋값 시세는 조회가 안 남는다. 통장·한도가 있으면 지역은 깎지 않는다. 조·세율 %는 통장이 있어도 깎는다."""
     blob = _blob(headline)
     title = headline.title or ""
     n = 0
@@ -313,8 +318,6 @@ def _weak_news_penalty(headline: Headline) -> int:
         if any(place in blob for place in _WEAK_PLACE):
             n += 1
         if any(youth in blob for youth in _WEAK_YOUTH):
-            n += 1
-        if _NATION_JO.search(title):
             n += 1
         if _RATE_ONLY.search(title) and not any(
             word in blob for word in ("세금", "한도", "통장", "이체", "만 원", "만원")
@@ -339,6 +342,10 @@ def _weak_news_penalty(headline: Headline) -> int:
     if title_is_family_pension(title) or title_is_family_pension(blob):
         n += 1
     if title_is_jeonse_yield(title) or title_is_jeonse_yield(blob):
+        n += 1
+    if title_is_tax_rate(title) or title_is_tax_rate(blob):
+        n += 1
+    if title_is_nation_jo(title) or title_is_nation_jo(blob):
         n += 1
     if any(word in blob for word in _MARKET_INDEX):
         n += 1
@@ -404,7 +411,7 @@ def choose_headline(
     now: datetime | None = None,
     used_titles: list | None = None,
 ) -> Headline:
-    """미사용 헤드라인 중 통장·한도·이체·월세·이자 만 원·아버지 통장 억+못 꺼내 → 시니어 관심 → 지역/2030/조/연%상품/육아휴직/한도만/연금두배/국민연금가족가급/주담대원금/주담대한달이자/통장이율%/이체%/전세통장연%/전세금맡기면월환산/중도금분양/코스피/시세 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
+    """미사용 헤드라인 중 통장·한도·이체·월세·이자 만 원·아버지 통장 억+못 꺼내 → 시니어 관심 → 지역/2030/조/세금세율%/연%상품/육아휴직/한도만/연금두배/국민연금가족가급/주담대원금/주담대한달이자/통장이율%/이체%/전세통장연%/전세금맡기면월환산/중도금분양/코스피/시세 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
     if not unused:
         raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
     prefer = _preferred_sources(now)
