@@ -348,6 +348,15 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([nation, house], now=datetime(2026, 8, 16, 9))
         self.assertEqual(chosen.title, house.title)
 
+    def test_health_depend_loses_to_isa_limit(self):
+        depend = _h("연금 합쳐 2000만 원 넘으면 건보 피부양자 탈락")
+        isa = _h("ISA 남은 한도 2000만 원, 내년에 사라지나")
+        self.assertGreater(_weak_news_penalty(depend), 0)
+        self.assertEqual(_house_score(depend), 0)
+        self.assertGreater(_house_score(isa), 0)
+        chosen = choose_headline([depend, isa], now=datetime(2026, 8, 17, 9))
+        self.assertEqual(chosen.title, isa.title)
+
     def test_month_interest_loses_to_year_cash(self):
         monthly = _h("3억 주담대 이자, 한 달 200만 원 원리금")
         yearly = _h("5억 주담대 이자, 연 140만 원")

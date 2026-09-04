@@ -15,6 +15,7 @@ from shorts.copy import (
     title_is_bare_limit,
     title_is_bare_mortgage,
     title_is_family_pension,
+    title_is_health_depend,
     title_is_jeonse_yield,
     title_is_midpay,
     title_is_month_interest,
@@ -294,6 +295,21 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="내 노령연금 가급, 연 70만 원?"))
         self.assertIn("가급", str(ctx.exception))
+
+    def test_rejects_health_depend_title(self):
+        self.assertTrue(title_is_health_depend("연금 합쳐 2000만 넘으면 건보 피부양자 탈락"))
+        self.assertTrue(title_is_health_depend("연금 합쳐 2000만 원 넘으면 건보 피부양자 탈락"))
+        self.assertTrue(title_is_health_depend("내 건보 피부양자, 연 2000만 원?"))
+        self.assertTrue(title_is_health_depend("건보료 기준 넘으면 탈락, 연 2000만 원?"))
+        self.assertFalse(title_is_health_depend("통장 합산 2000만 원, 건보 피부양자 탈락"))
+        self.assertFalse(title_is_health_depend("ISA 남은 한도 2000만 원, 내년에 사라지나"))
+        self.assertFalse(title_is_health_depend("자녀 통장에 5000만 원, 그냥 옮기면 세금"))
+        self.assertFalse(title_is_health_depend("종부세 14억? 주택연금 가입은 아직 12억"))
+        self.assertFalse(title_is_health_depend("5억 주담대 이자, 연 140만 원?"))
+        self.assertFalse(title_is_health_depend("아버지 통장 4억, 지금 못 꺼내?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="연금 합쳐 2000만 원 넘으면 건보 피부양자 탈락"))
+        self.assertIn("피부양자", str(ctx.exception))
 
     def test_rejects_jeonse_yield_title(self):
         self.assertTrue(title_is_jeonse_yield("전세금 2억 맡기면, 월 73만 원?"))

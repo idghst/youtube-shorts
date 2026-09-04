@@ -40,7 +40,7 @@ AUTO_PUBLISH=1 .venv/bin/python -m shorts run --dir out/<channel>/<job>
 .venv/bin/python -m shorts auth
 ```
 
-길이는 `script.json`의 `scenes[].duration` 합 (45~51초, 3초 배수). 권장 48초·이미지 16장. 60초를 넘기면 Shorts 선반에서 밀린다. 제목은 억·만 원 + 한도·세금·월세·연 만 원 이자·못 꺼내 결과. 같은 통장·한도·월세·이자+숫자 재탕·한도만·연금 두 배·국민연금 가족·가급·배우자·팔면·만 명·코스피·전셋값 시세·적금 연%·주담대 원금 다 갚아·주담대 한 달 이자·통장 이율·이체 %·전세 통장 연%·전세금 맡기면 월 N만·중도금·분양·육아휴직·세금 세율 %·국가 조 금지. 한 쇼츠 안 컷은 같은 `style.anchor`·`style.face`·`style.wardrobe`. 업로드 메타는 `.venv/bin/python -m shorts meta --dir <잡>`. 주제 해시태그 5~9개, 태그 10개 이상, `thumb.png` 필수. `#돈이웃` `#쇼츠` `#shorts`는 넣지 않는다.
+길이는 `script.json`의 `scenes[].duration` 합 (45~51초, 3초 배수). 권장 48초·이미지 16장. 60초를 넘기면 Shorts 선반에서 밀린다. 제목은 억·만 원 + 한도·세금·월세·연 만 원 이자·못 꺼내 결과. 같은 통장·한도·월세·이자+숫자 재탕·한도만·연금 두 배·국민연금 가족·가급·배우자·건보 피부양자·팔면·만 명·코스피·전셋값 시세·적금 연%·주담대 원금 다 갚아·주담대 한 달 이자·통장 이율·이체 %·전세 통장 연%·전세금 맡기면 월 N만·중도금·분양·육아휴직·세금 세율 %·국가 조 금지. 한 쇼츠 안 컷은 같은 `style.anchor`·`style.face`·`style.wardrobe`. 업로드 메타는 `.venv/bin/python -m shorts meta --dir <잡>`. 주제 해시태그 5~9개, 태그 10개 이상, `thumb.png` 필수. `#돈이웃` `#쇼츠` `#shorts`는 넣지 않는다.
 
 흐름: Supabase 이전 주제 → 선정 → 화풍 고정 → 대본 → 제목 → 설명 → 해시태그 → 이미지 → 렌더 → 업로드 → Supabase 기록.
 

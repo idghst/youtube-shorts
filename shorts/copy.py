@@ -450,6 +450,20 @@ def title_is_nation_jo(title: str) -> bool:
     return bool(_NATION_JO.search(title or ""))
 
 
+def title_is_health_depend(title: str) -> bool:
+    """건보 피부양자 탈락처럼 자격. 통장·한도·못 꺼내·억/만 원 세금이 아니다."""
+    text = title or ""
+    depend = "피부양자" in text
+    drop = "건보" in text and "탈락" in text
+    if not (depend or drop):
+        return False
+    if any(word in text for word in ("통장", "한도", "꺼내", "인출")):
+        return False
+    if "세금" in text and (_MONEY_EOK.search(text) or _MONEY_MAN_WON.search(text)):
+        return False
+    return True
+
+
 def title_is_jeonse_yield(title: str) -> bool:
     """전세금 2억 맡기면 월 73만처럼 운용 수익 환산. 월세 비교·부모 한도가 아니다."""
     text = title or ""
@@ -673,6 +687,8 @@ def validate_script(script) -> None:
         errors.append("제목이 세금 세율 %. 억/만 원 세금으로")
     if title_is_nation_jo(title):
         errors.append("제목이 국가 조 단위. 억/만 원 한도로")
+    if title_is_health_depend(title):
+        errors.append("제목이 건보 피부양자 탈락. 통장·한도·못 꺼내·억/만 원 세금으로")
     banned = _hit_banned(title)
     if banned:
         errors.append("제목 금지어: %s" % banned)
