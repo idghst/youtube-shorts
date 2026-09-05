@@ -16,6 +16,7 @@ from shorts.copy import (
     title_is_bare_mortgage,
     title_is_family_pension,
     title_is_health_depend,
+    title_is_tiny_rent,
     title_is_jeonse_yield,
     title_is_midpay,
     title_is_month_interest,
@@ -310,6 +311,19 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="연금 합쳐 2000만 원 넘으면 건보 피부양자 탈락"))
         self.assertIn("피부양자", str(ctx.exception))
+
+    def test_rejects_tiny_rent_title(self):
+        self.assertTrue(title_is_tiny_rent("전세 3만 줄고, 월세 5만이 늘면?"))
+        self.assertTrue(title_is_tiny_rent("전세 3만 원 줄고, 월세 5만 원이 늘면?"))
+        self.assertTrue(title_is_tiny_rent("내 월세, 5만 원?"))
+        self.assertFalse(title_is_tiny_rent("내 전세 월세, 74만 원이 53만?"))
+        self.assertFalse(title_is_tiny_rent("전세금 부모에게 빌리면, 무이자 2억?"))
+        self.assertFalse(title_is_tiny_rent("전세금 2억 맡기면, 월 73만 원?"))
+        self.assertFalse(title_is_tiny_rent("5억 주담대 이자, 연 140만 원?"))
+        self.assertFalse(title_is_tiny_rent("아버지 통장 4억, 지금 못 꺼내?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="전세 3만 원 줄고, 월세 5만 원이 늘면?"))
+        self.assertIn("10만", str(ctx.exception))
 
     def test_rejects_jeonse_yield_title(self):
         self.assertTrue(title_is_jeonse_yield("전세금 2억 맡기면, 월 73만 원?"))

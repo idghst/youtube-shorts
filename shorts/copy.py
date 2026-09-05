@@ -132,6 +132,7 @@ _MONEY_PCT = re.compile(r"\d+(?:\.\d+)?\s*%")
 _MONTH_INTEREST = re.compile(r"(?:한\s*달|월)\s*\d+(?:\.\d+)?\s*만")
 _YEAR_MAN = re.compile(r"연\s*\d+(?:\.\d+)?\s*만")
 _NATION_JO = re.compile(r"\d+(?:\.\d+)?\s*조")
+_MAN_AMOUNT = re.compile(r"(\d+(?:\.\d+)?)\s*만")
 _TAX_RATE_WORD = ("세금", "세율", "양도세", "증여세", "종부세", "소득세", "퇴직소득세")
 _NOT_MONEY_MAN = re.compile(r"\d+(?:\.\d+)?\s*만\s*(?:명|가구|채|세대|건)")
 _PCT_STAKE = ("세금", "한도", "건보", "증여", "이체", "통장", "연금")
@@ -464,6 +465,19 @@ def title_is_health_depend(title: str) -> bool:
     return True
 
 
+def title_is_tiny_rent(title: str) -> bool:
+    """전세 3만·월세 5만처럼 가구 수/10만 미만. 74만→53만 월세 비교가 아니다."""
+    text = title or ""
+    if not any(word in text for word in ("전세", "월세")):
+        return False
+    if _MONEY_EOK.search(text):
+        return False
+    mans = [float(n) for n in _MAN_AMOUNT.findall(text)]
+    if not mans:
+        return False
+    return all(n < 10 for n in mans)
+
+
 def title_is_jeonse_yield(title: str) -> bool:
     """전세금 2억 맡기면 월 73만처럼 운용 수익 환산. 월세 비교·부모 한도가 아니다."""
     text = title or ""
@@ -689,6 +703,8 @@ def validate_script(script) -> None:
         errors.append("제목이 국가 조 단위. 억/만 원 한도로")
     if title_is_health_depend(title):
         errors.append("제목이 건보 피부양자 탈락. 통장·한도·못 꺼내·억/만 원 세금으로")
+    if title_is_tiny_rent(title):
+        errors.append("제목이 전세·월세 10만 미만·가구 수. 74만→53만 월세 비교로")
     banned = _hit_banned(title)
     if banned:
         errors.append("제목 금지어: %s" % banned)
