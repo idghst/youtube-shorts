@@ -14,6 +14,7 @@ from urllib.request import Request, urlopen
 
 from shorts.config import DEFAULT_CHANNEL, OUT_DIR, channel_dir, ensure_dirs, youtube_channel_id
 from shorts.copy import (
+    title_is_account_crime,
     title_is_account_rate,
     title_is_bare_limit,
     title_is_bare_mortgage,
@@ -304,6 +305,8 @@ def _rejected_house(title: str, blob: str) -> bool:
         or title_is_health_depend(blob)
         or title_is_tiny_rent(title)
         or title_is_tiny_rent(blob)
+        or title_is_account_crime(title)
+        or title_is_account_crime(blob)
     )
 
 
@@ -316,7 +319,7 @@ def _house_score(headline: Headline) -> int:
 
 
 def _weak_news_penalty(headline: Headline) -> int:
-    """지역 이전·2030 타깃·국가 조·세금 세율 %·연 N% 상품·육아휴직·한도만·연금 두 배·국민연금 가족·가급·배우자·건보 피부양자·전세·월세 10만 미만·주담대 원금 다 갚아·주담대 한 달 이자·통장 이율·이체 %·전세 통장 연%·전세금 맡기면 월 환산·중도금·분양·지수·전셋값 시세는 조회가 안 남는다. 통장·한도가 있으면 지역은 깎지 않는다. 조·세율 %는 통장이 있어도 깎는다."""
+    """지역 이전·2030 타깃·국가 조·세금 세율 %·연 N% 상품·적금·예금 % 비교·육아휴직·한도만·연금 두 배·국민연금 가족·가급·배우자·건보 피부양자·전세·월세 10만 미만·주담대 원금 다 갚아·주담대 한 달 이자·통장 이율·이체 %·전세 통장 연%·전세금 맡기면 월 환산·중도금·분양·통장 범죄·지수·전셋값 시세는 조회가 안 남는다. 통장·한도가 있으면 지역은 깎지 않는다. 조·세율 %는 통장이 있어도 깎는다."""
     blob = _blob(headline)
     title = headline.title or ""
     n = 0
@@ -356,6 +359,8 @@ def _weak_news_penalty(headline: Headline) -> int:
     if title_is_health_depend(title) or title_is_health_depend(blob):
         n += 1
     if title_is_tiny_rent(title) or title_is_tiny_rent(blob):
+        n += 1
+    if title_is_account_crime(title) or title_is_account_crime(blob):
         n += 1
     if any(word in blob for word in _MARKET_INDEX):
         n += 1
@@ -421,7 +426,7 @@ def choose_headline(
     now: datetime | None = None,
     used_titles: list | None = None,
 ) -> Headline:
-    """미사용 헤드라인 중 통장·한도·이체·월세·이자 만 원·아버지 통장 억+못 꺼내 → 시니어 관심 → 지역/2030/조/세금세율%/연%상품/육아휴직/한도만/연금두배/국민연금가족가급/건보피부양자/전세월세10만미만/주담대원금/주담대한달이자/통장이율%/이체%/전세통장연%/전세금맡기면월환산/중도금분양/코스피/시세 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
+    """미사용 헤드라인 중 통장·한도·이체·월세·이자 만 원·아버지 통장 억+못 꺼내 → 시니어 관심 → 지역/2030/조/세금세율%/연%상품/적금예금%비교/육아휴직/한도만/연금두배/국민연금가족가급/건보피부양자/전세월세10만미만/주담대원금/주담대한달이자/통장이율%/이체%/전세통장연%/전세금맡기면월환산/중도금분양/통장범죄/코스피/시세 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
     if not unused:
         raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
     prefer = _preferred_sources(now)

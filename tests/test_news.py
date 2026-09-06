@@ -357,6 +357,24 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([tiny, compare], now=datetime(2026, 8, 18, 9))
         self.assertEqual(chosen.title, compare.title)
 
+    def test_rate_compare_without_year_loses_to_isa_limit(self):
+        compare = _h("적금 10%? 시중은행 예금은 3.3%, 내 통장")
+        isa = _h("ISA 남은 한도 2000만 원, 내년에 사라지나")
+        self.assertGreater(_weak_news_penalty(compare), 0)
+        self.assertEqual(_house_score(compare), 0)
+        self.assertGreater(_house_score(isa), 0)
+        chosen = choose_headline([compare, isa], now=datetime(2026, 8, 20, 9))
+        self.assertEqual(chosen.title, isa.title)
+
+    def test_account_crime_loses_to_tax_transfer(self):
+        crime = _h("자녀 통장 5000만 원, 넘기면 범죄자")
+        tax = _h("자녀 통장 5000만 원, 그냥 옮기면 증여세")
+        self.assertGreater(_weak_news_penalty(crime), 0)
+        self.assertEqual(_house_score(crime), 0)
+        self.assertGreater(_house_score(tax), 0)
+        chosen = choose_headline([crime, tax], now=datetime(2026, 8, 21, 9))
+        self.assertEqual(chosen.title, tax.title)
+
     def test_health_depend_loses_to_isa_limit(self):
         depend = _h("연금 합쳐 2000만 원 넘으면 건보 피부양자 탈락")
         isa = _h("ISA 남은 한도 2000만 원, 내년에 사라지나")

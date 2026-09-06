@@ -362,9 +362,9 @@ def title_is_price_news(title: str) -> bool:
 
 
 def title_is_rate_promo(title: str) -> bool:
-    """적금 연 12%처럼 금리 상품. 한도·만 원이 있어도 세금·월세 결과가 아니면 실패다."""
+    """적금 연 12%·적금 10% vs 예금 3.3%처럼 금리 상품. 연이 없어도 %면 같다. 세금·월세 결과가 아니면 실패다."""
     text = title or ""
-    if not _RATE_ONLY.search(text):
+    if not (_RATE_ONLY.search(text) or _MONEY_PCT.search(text)):
         return False
     if not any(word in text for word in _RATE_PRODUCT):
         return False
@@ -461,6 +461,21 @@ def title_is_health_depend(title: str) -> bool:
     if any(word in text for word in ("통장", "한도", "꺼내", "인출")):
         return False
     if "세금" in text and (_MONEY_EOK.search(text) or _MONEY_MAN_WON.search(text)):
+        return False
+    return True
+
+
+_ACCOUNT_CRIME = ("범죄", "대포", "사기")
+
+
+def title_is_account_crime(title: str) -> bool:
+    """통장 넘기면 범죄처럼 대포·사기. 세금·한도·못 꺼내가 아니다."""
+    text = title or ""
+    if "통장" not in text:
+        return False
+    if not any(word in text for word in _ACCOUNT_CRIME):
+        return False
+    if any(word in text for word in ("세금", "한도", "꺼내", "인출", "소멸", "합산")):
         return False
     return True
 
@@ -705,6 +720,8 @@ def validate_script(script) -> None:
         errors.append("제목이 건보 피부양자 탈락. 통장·한도·못 꺼내·억/만 원 세금으로")
     if title_is_tiny_rent(title):
         errors.append("제목이 전세·월세 10만 미만·가구 수. 74만→53만 월세 비교로")
+    if title_is_account_crime(title):
+        errors.append("제목이 통장 범죄·대포. 세금·한도·못 꺼내로")
     banned = _hit_banned(title)
     if banned:
         errors.append("제목 금지어: %s" % banned)

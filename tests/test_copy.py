@@ -16,6 +16,7 @@ from shorts.copy import (
     title_is_bare_mortgage,
     title_is_family_pension,
     title_is_health_depend,
+    title_is_account_crime,
     title_is_tiny_rent,
     title_is_jeonse_yield,
     title_is_midpay,
@@ -202,11 +203,17 @@ class CopyValidateTests(unittest.TestCase):
     def test_rejects_rate_promo_title(self):
         self.assertTrue(title_is_rate_promo("적금 한도 월 30만 원, 연 12%?"))
         self.assertTrue(title_is_rate_promo("변동 주담대 이자, 연 6%?"))
+        self.assertTrue(title_is_rate_promo("적금 10%? 시중은행 예금은 3.3%"))
+        self.assertTrue(title_is_rate_promo("적금 10%? 시중은행 예금은 3.3%, 내 통장"))
         self.assertFalse(title_is_rate_promo("IRP 깨면 16.5% 세금, 55세 연금은 3.3%"))
         self.assertFalse(title_is_rate_promo("내 전세 월세, 74만 원이 53만?"))
+        self.assertFalse(title_is_rate_promo("5억 주담대 이자, 연 140만 원?"))
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="적금 한도 월 30만 원, 연 12%?"))
         self.assertIn("연%", str(ctx.exception))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="적금 10%? 시중은행 예금은 3.3%, 내 통장"))
+        self.assertIn("적금", str(ctx.exception))
 
     def test_rejects_workplace_benefit_title(self):
         self.assertTrue(title_is_workplace("내 육아휴직급여, 확인서 없으면 0원?"))
@@ -324,6 +331,18 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="전세 3만 원 줄고, 월세 5만 원이 늘면?"))
         self.assertIn("10만", str(ctx.exception))
+
+    def test_rejects_account_crime_title(self):
+        self.assertTrue(title_is_account_crime("통장 넘겼다가 범죄자가 된다고?"))
+        self.assertTrue(title_is_account_crime("자녀 통장 5000만 원, 넘기면 범죄자?"))
+        self.assertTrue(title_is_account_crime("내 통장 대포로 쓰면, 5000만 원?"))
+        self.assertFalse(title_is_account_crime("자녀 통장에 5000만 원, 그냥 옮기면 세금"))
+        self.assertFalse(title_is_account_crime("아버지 명의 예금 4억, 상속 막히면 바로 못 꺼내"))
+        self.assertFalse(title_is_account_crime("아버지 통장 4억, 지금 못 꺼내?"))
+        self.assertFalse(title_is_account_crime("5억 주담대 이자, 연 140만 원?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="자녀 통장 5000만 원, 넘기면 범죄자?"))
+        self.assertIn("범죄", str(ctx.exception))
 
     def test_rejects_jeonse_yield_title(self):
         self.assertTrue(title_is_jeonse_yield("전세금 2억 맡기면, 월 73만 원?"))
