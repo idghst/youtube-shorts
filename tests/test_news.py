@@ -375,6 +375,26 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([crime, tax], now=datetime(2026, 8, 21, 9))
         self.assertEqual(chosen.title, tax.title)
 
+    def test_insure_product_loses_to_isa_limit(self):
+        insure = _h("자차 보험료 30%, 내 통장 200만 원")
+        isa = _h("ISA 남은 한도 2000만 원, 내년에 사라지나")
+        nps = _h("국민연금 보험료 9% 인상 검토")
+        self.assertGreater(_weak_news_penalty(insure), 0)
+        self.assertEqual(_house_score(insure), 0)
+        self.assertGreater(_house_score(isa), 0)
+        self.assertEqual(_weak_news_penalty(nps), 0)
+        chosen = choose_headline([insure, isa], now=datetime(2026, 8, 19, 9))
+        self.assertEqual(chosen.title, isa.title)
+
+    def test_tax_count_loses_to_jongse_eok(self):
+        count = _h("내 집 세금이 다섯 개면, 연 200만 원")
+        jongse = _h("종부세 14억, 주택연금 가입은 아직 12억")
+        self.assertGreater(_weak_news_penalty(count), 0)
+        self.assertEqual(_house_score(count), 0)
+        self.assertGreater(_house_score(jongse), 0)
+        chosen = choose_headline([count, jongse], now=datetime(2026, 8, 18, 9))
+        self.assertEqual(chosen.title, jongse.title)
+
     def test_health_depend_loses_to_isa_limit(self):
         depend = _h("연금 합쳐 2000만 원 넘으면 건보 피부양자 탈락")
         isa = _h("ISA 남은 한도 2000만 원, 내년에 사라지나")

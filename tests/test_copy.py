@@ -17,6 +17,8 @@ from shorts.copy import (
     title_is_family_pension,
     title_is_health_depend,
     title_is_account_crime,
+    title_is_insure_product,
+    title_is_tax_count,
     title_is_tiny_rent,
     title_is_jeonse_yield,
     title_is_midpay,
@@ -343,6 +345,34 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="자녀 통장 5000만 원, 넘기면 범죄자?"))
         self.assertIn("범죄", str(ctx.exception))
+
+    def test_rejects_insure_product_title(self):
+        self.assertTrue(title_is_insure_product("자차 한 번, 보험료가 30%나?"))
+        self.assertTrue(title_is_insure_product("내 자차 보험료, 30%면 연 200만 원?"))
+        self.assertTrue(title_is_insure_product("자차 보험료 30%, 내 통장 200만 원?"))
+        self.assertTrue(title_is_insure_product("실손 보험료 20%, 내 월급부터"))
+        self.assertFalse(title_is_insure_product("국민연금 보험료 9% 인상 검토"))
+        self.assertFalse(title_is_insure_product("건보료 기준 넘으면 탈락, 연 2000만 원?"))
+        self.assertFalse(title_is_insure_product("자녀 통장에 5000만 원, 그냥 옮기면 세금"))
+        self.assertFalse(title_is_insure_product("아버지 통장 4억, 지금 못 꺼내?"))
+        self.assertFalse(title_is_insure_product("5억 주담대 이자, 연 140만 원?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="내 자차 보험료, 30%면 연 200만 원?"))
+        self.assertIn("보험", str(ctx.exception))
+
+    def test_rejects_tax_count_title(self):
+        self.assertTrue(title_is_tax_count("집 한 채에 세금이 다섯 개면?"))
+        self.assertTrue(title_is_tax_count("내 집 세금이 다섯 개면, 연 200만 원?"))
+        self.assertTrue(title_is_tax_count("내 집 세금이 다섯 개면, 14억?"))
+        self.assertTrue(title_is_tax_count("집 한 채 세금 5개, 종부세부터"))
+        self.assertFalse(title_is_tax_count("종부세 14억? 주택연금 가입은 아직 12억"))
+        self.assertFalse(title_is_tax_count("자녀 통장에 5000만 원, 그냥 옮기면 세금"))
+        self.assertFalse(title_is_tax_count("IRP 깨면 16.5% 세금, 55세 연금은 3.3%"))
+        self.assertFalse(title_is_tax_count("아버지 통장 4억, 지금 못 꺼내?"))
+        self.assertFalse(title_is_tax_count("5억 주담대 이자, 연 140만 원?"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="내 집 세금이 다섯 개면, 연 200만 원?"))
+        self.assertIn("개", str(ctx.exception))
 
     def test_rejects_jeonse_yield_title(self):
         self.assertTrue(title_is_jeonse_yield("전세금 2억 맡기면, 월 73만 원?"))

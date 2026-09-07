@@ -480,6 +480,37 @@ def title_is_account_crime(title: str) -> bool:
     return True
 
 
+_INSURE_PRODUCT = ("자차", "자동차보험", "차보험", "실손", "운전자보험")
+_INSURE_STAKE = ("한도", "세금", "꺼내", "인출", "증여", "소멸", "합산", "월세", "무이자")
+_TAX_COUNT = re.compile(r"(?:다섯|여섯|일곱|여러|\d+)\s*(?:개|가지)")
+
+
+def title_is_insure_product(title: str) -> bool:
+    """자차 보험료 30%처럼 보험 상품. 국민연금·건보 보험료 인상이 아니다."""
+    text = title or ""
+    if any(word in text for word in _INSURE_STAKE):
+        return False
+    if any(word in text for word in _INSURE_PRODUCT):
+        return True
+    if "보험료" not in text or not _MONEY_PCT.search(text):
+        return False
+    if any(word in text for word in ("연금", "건보", "국민", "인상", "삭감")):
+        return False
+    return True
+
+
+def title_is_tax_count(title: str) -> bool:
+    """집 한 채 세금 다섯 개처럼 세목 개수. 종부세 억 비교가 아니다."""
+    text = title or ""
+    if "세금" not in text:
+        return False
+    if not _TAX_COUNT.search(text):
+        return False
+    if any(word in text for word in ("통장", "한도", "꺼내", "인출", "이체", "월세")):
+        return False
+    return True
+
+
 def title_is_tiny_rent(title: str) -> bool:
     """전세 3만·월세 5만처럼 가구 수/10만 미만. 74만→53만 월세 비교가 아니다."""
     text = title or ""
@@ -722,6 +753,10 @@ def validate_script(script) -> None:
         errors.append("제목이 전세·월세 10만 미만·가구 수. 74만→53만 월세 비교로")
     if title_is_account_crime(title):
         errors.append("제목이 통장 범죄·대포. 세금·한도·못 꺼내로")
+    if title_is_insure_product(title):
+        errors.append("제목이 자차·보험료 상품. 한도·세금·못 꺼내로")
+    if title_is_tax_count(title):
+        errors.append("제목이 세금 개수. 종부세 억 비교·통장 세금으로")
     banned = _hit_banned(title)
     if banned:
         errors.append("제목 금지어: %s" % banned)
