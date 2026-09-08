@@ -422,6 +422,24 @@ class ChooseHeadlineTests(unittest.TestCase):
         chosen = choose_headline([midpay, cash], now=datetime(2026, 8, 26, 21))
         self.assertEqual(chosen.title, cash.title)
 
+    def test_preloan_loses_to_parent_limit(self):
+        preloan = _h("내 전세 대출, 집은 안 오고 먼저 풀리면 2억")
+        parent = _h("전세금을 부모에게 빌리면 무이자 한도 2억")
+        self.assertGreater(_weak_news_penalty(preloan), 0)
+        self.assertEqual(_house_score(preloan), 0)
+        self.assertGreater(_house_score(parent), 0)
+        chosen = choose_headline([preloan, parent], now=datetime(2026, 8, 20, 9))
+        self.assertEqual(chosen.title, parent.title)
+
+    def test_product_return_loses_to_isa_limit(self):
+        ret = _h("내 퇴직연금 3년 105%, 통장 200만 원")
+        isa = _h("ISA 남은 한도 2000만 원, 내년에 사라지나")
+        self.assertGreater(_weak_news_penalty(ret), 0)
+        self.assertEqual(_house_score(ret), 0)
+        self.assertGreater(_house_score(isa), 0)
+        chosen = choose_headline([ret, isa], now=datetime(2026, 8, 19, 9))
+        self.assertEqual(chosen.title, isa.title)
+
 
 if __name__ == "__main__":
     unittest.main()

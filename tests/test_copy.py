@@ -18,6 +18,8 @@ from shorts.copy import (
     title_is_health_depend,
     title_is_account_crime,
     title_is_insure_product,
+    title_is_preloan,
+    title_is_product_return,
     title_is_tax_count,
     title_is_tiny_rent,
     title_is_jeonse_yield,
@@ -422,6 +424,32 @@ class CopyValidateTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_script(_ok(title="6억 중도금 무이자, 이자 2250만?"))
         self.assertIn("중도금", str(ctx.exception))
+
+    def test_rejects_preloan_title(self):
+        self.assertTrue(title_is_preloan("집은 안 오고, 대출만 먼저 풀리면?"))
+        self.assertTrue(title_is_preloan("내 전세 대출, 집은 안 오고 먼저 풀리면 2억?"))
+        self.assertTrue(title_is_preloan("대출만 먼저 풀리면, 내 통장 3억?"))
+        self.assertTrue(title_is_preloan("선대출 3억, 집은 아직인데?"))
+        self.assertFalse(title_is_preloan("전세금 부모에게 빌리면, 무이자 2억?"))
+        self.assertFalse(title_is_preloan("5억 주담대 이자, 연 140만 원?"))
+        self.assertFalse(title_is_preloan("아버지 통장 4억, 지금 못 꺼내?"))
+        self.assertFalse(title_is_preloan("자녀 통장에 5000만 원, 그냥 옮기면 세금"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="내 전세 대출, 집은 안 오고 먼저 풀리면 2억?"))
+        self.assertIn("먼저", str(ctx.exception))
+
+    def test_rejects_product_return_title(self):
+        self.assertTrue(title_is_product_return("퇴직연금 3년 105%, 어디 맡겼어요?"))
+        self.assertTrue(title_is_product_return("내 퇴직연금 3년 105%, 통장 200만 원?"))
+        self.assertTrue(title_is_product_return("IRP 수익률 6.5%, 내 통장부터"))
+        self.assertFalse(title_is_product_return("IRP 깨면 16.5% 세금, 55세 연금은 3.3%"))
+        self.assertFalse(title_is_product_return("국민연금 보험료 9% 인상 검토"))
+        self.assertFalse(title_is_product_return("5억 주담대 이자, 연 140만 원?"))
+        self.assertFalse(title_is_product_return("아버지 통장 4억, 지금 못 꺼내?"))
+        self.assertFalse(title_is_product_return("자녀 통장에 5000만 원, 그냥 옮기면 세금"))
+        with self.assertRaises(ValueError) as ctx:
+            validate_script(_ok(title="내 퇴직연금 3년 105%, 통장 200만 원?"))
+        self.assertIn("수익", str(ctx.exception))
 
     def test_rejects_title_without_topic(self):
         with self.assertRaises(ValueError) as ctx:

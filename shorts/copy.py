@@ -106,6 +106,10 @@ _LIMIT_COMPARE = re.compile(r"\d+(?:\.\d+)?\s*만(?:\s*원)?.{0,12}\d+(?:\.\d+)?
 _PENSION_DOUBLE = re.compile(r"두\s*배|2배|200\s*%")
 _MIDPAY = ("중도금", "분양", "입주")
 _MIDPAY_STAKE = ("전세", "월세", "통장", "꺼내", "인출", "증여", "차용")
+_PRELOAN = ("집은 안 오고", "집 안 오고", "대출만 먼저", "대출이 먼저", "선대출")
+_PRELOAN_RE = re.compile(r"대출.{0,8}먼저|먼저.{0,8}(풀리면|실행|나와)")
+_RETURN_PRODUCT = ("퇴직연금", "irp")
+_RETURN_STAKE = ("세금", "한도", "꺼내", "인출", "소멸", "합산", "증여", "무이자")
 _JEONSE_YIELD_VERB = ("맡기면", "맡기고", "예치", "묶어", "묶이면", "넣으면")
 _JEONSE_YIELD_STAKE = ("부모", "한도", "꺼내", "인출", "증여", "무이자", "차용")
 _FAMILY_PENSION = ("가족", "유족", "분할연금", "분할 연금", "가급", "부양", "배우자")
@@ -434,6 +438,35 @@ def title_is_midpay(title: str) -> bool:
     return True
 
 
+def title_is_preloan(title: str) -> bool:
+    """집은 안 오고 대출만 먼저처럼 선대출. 중도금 단어·전세가 있어도 분양 상품이다."""
+    text = title or ""
+    if not (any(word in text for word in _PRELOAN) or _PRELOAN_RE.search(text)):
+        return False
+    if "주담대" in text and "이자" in text and (
+        _MONEY_MAN_WON.search(text) or _YEAR_MAN.search(text)
+    ):
+        return False
+    if "부모" in text and "무이자" in text:
+        return False
+    return True
+
+
+def title_is_product_return(title: str) -> bool:
+    """퇴직연금 3년 105%처럼 상품 수익률. 코스피가 없어도 한도·세금이 아니다."""
+    text = title or ""
+    if not _MONEY_PCT.search(text):
+        return False
+    low = text.lower()
+    if not any(word in low for word in _RETURN_PRODUCT):
+        return False
+    if any(word in text for word in _RETURN_STAKE):
+        return False
+    if title_is_tax_rate(text) or title_is_pension_double(text) or title_is_nation_jo(text):
+        return False
+    return True
+
+
 def title_is_tax_rate(title: str) -> bool:
     """IRP 16.5% 세금처럼 세율 비교. 억/만 원 세금이 아니다."""
     text = title or ""
@@ -739,6 +772,10 @@ def validate_script(script) -> None:
         errors.append("제목이 통장 이율·이체 %·전세 연%. 억 + 못 꺼내·이자 만 원으로")
     if title_is_midpay(title):
         errors.append("제목이 중도금·분양 상품. 전세 무이자·주담대 이자 만 원으로")
+    if title_is_preloan(title):
+        errors.append("제목이 집은 안 오고·대출만 먼저. 전세 무이자·주담대 이자 만 원으로")
+    if title_is_product_return(title):
+        errors.append("제목이 퇴직연금 수익률 %. 한도·세금·못 꺼내로")
     if title_is_family_pension(title):
         errors.append("제목이 국민연금 가족·유족·가급. 한도·통장·세금·못 꺼내로")
     if title_is_jeonse_yield(title):

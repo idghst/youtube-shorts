@@ -23,6 +23,8 @@ from shorts.copy import (
     title_is_family_pension,
     title_is_jeonse_yield,
     title_is_midpay,
+    title_is_preloan,
+    title_is_product_return,
     title_is_month_interest,
     title_is_health_depend,
     title_is_tiny_rent,
@@ -295,6 +297,10 @@ def _rejected_house(title: str, blob: str) -> bool:
         or title_is_account_rate(blob)
         or title_is_midpay(title)
         or title_is_midpay(blob)
+        or title_is_preloan(title)
+        or title_is_preloan(blob)
+        or title_is_product_return(title)
+        or title_is_product_return(blob)
         or title_is_family_pension(title)
         or title_is_family_pension(blob)
         or title_is_jeonse_yield(title)
@@ -325,7 +331,7 @@ def _house_score(headline: Headline) -> int:
 
 
 def _weak_news_penalty(headline: Headline) -> int:
-    """지역 이전·2030 타깃·국가 조·세금 세율 %·세금 개수·연 N% 상품·적금·예금 % 비교·자차 보험료·육아휴직·한도만·연금 두 배·국민연금 가족·가급·배우자·건보 피부양자·전세·월세 10만 미만·주담대 원금 다 갚아·주담대 한 달 이자·통장 이율·이체 %·전세 통장 연%·전세금 맡기면 월 환산·중도금·분양·통장 범죄·지수·전셋값 시세는 조회가 안 남는다. 통장·한도가 있으면 지역은 깎지 않는다. 조·세율 %는 통장이 있어도 깎는다."""
+    """지역 이전·2030 타깃·국가 조·세금 세율 %·세금 개수·연 N% 상품·적금·예금 % 비교·자차 보험료·육아휴직·한도만·연금 두 배·국민연금 가족·가급·배우자·건보 피부양자·전세·월세 10만 미만·주담대 원금 다 갚아·주담대 한 달 이자·통장 이율·이체 %·전세 통장 연%·전세금 맡기면 월 환산·중도금·분양·집은 안 오고·대출만 먼저·퇴직연금 수익률 %·통장 범죄·지수·전셋값 시세는 조회가 안 남는다. 통장·한도가 있으면 지역은 깎지 않는다. 조·세율 %는 통장이 있어도 깎는다."""
     blob = _blob(headline)
     title = headline.title or ""
     n = 0
@@ -353,6 +359,10 @@ def _weak_news_penalty(headline: Headline) -> int:
     if title_is_account_rate(title) or title_is_account_rate(blob):
         n += 1
     if title_is_midpay(title) or title_is_midpay(blob):
+        n += 1
+    if title_is_preloan(title) or title_is_preloan(blob):
+        n += 1
+    if title_is_product_return(title) or title_is_product_return(blob):
         n += 1
     if title_is_family_pension(title) or title_is_family_pension(blob):
         n += 1
@@ -436,7 +446,7 @@ def choose_headline(
     now: datetime | None = None,
     used_titles: list | None = None,
 ) -> Headline:
-    """미사용 헤드라인 중 통장·한도·이체·월세·이자 만 원·아버지 통장 억+못 꺼내 → 시니어 관심 → 지역/2030/조/세금세율%/연%상품/적금예금%비교/육아휴직/한도만/연금두배/국민연금가족가급/건보피부양자/전세월세10만미만/주담대원금/주담대한달이자/통장이율%/이체%/전세통장연%/전세금맡기면월환산/중도금분양/통장범죄/코스피/시세 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
+    """미사용 헤드라인 중 통장·한도·이체·월세·이자 만 원·아버지 통장 억+못 꺼내 → 시니어 관심 → 지역/2030/조/세금세율%/연%상품/적금예금%비교/육아휴직/한도만/연금두배/국민연금가족가급/건보피부양자/전세월세10만미만/주담대원금/주담대한달이자/통장이율%/이체%/전세통장연%/전세금맡기면월환산/중도금분양/집은안오고대출먼저/퇴직연금수익률%/통장범죄/코스피/시세 감점 → 숫자 훅 → 금융 → 안 겹침 → 매체 → 최신 순."""
     if not unused:
         raise SystemExit("쓸 헤드라인 없음 (RSS 실패이거나 전부 사용함)")
     prefer = _preferred_sources(now)
